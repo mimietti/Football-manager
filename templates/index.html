@@ -129,6 +129,7 @@
         let waitingForMatch = false;
         let animating = false;
         let uiPhase = "pre";
+        const localSaveKey = "rfm-save:" + {{ username|tojson }};
 
         const esc = (v) => String(v ?? "")
             .replaceAll("&", "&amp;").replaceAll("<", "&lt;")
@@ -141,6 +142,27 @@
         function inferPhase(payload) {
             if (payload?.transfer_window && payload?.last_matches?.length) return "report";
             return "pre";
+        }
+
+        function saveLocalState(payload) {
+            if (!payload?.save_blob) return;
+            try {
+                localStorage.setItem(localSaveKey, payload.save_blob);
+            } catch (err) {
+                console.warn("Local save failed", err);
+            }
+        }
+
+        function restoreLocalState() {
+            let saveBlob = "";
+            try {
+                saveBlob = localStorage.getItem(localSaveKey) || "";
+            } catch (err) {
+                console.warn("Local save unavailable", err);
+            }
+            if (saveBlob) {
+                socket.emit("restore_save", { save_blob: saveBlob });
+            }
         }
 
         function applyUiPhase() {
@@ -600,6 +622,7 @@
                 const idx = parseInt(teamBtn.dataset.teamIndex, 10);
                 document.getElementById("teamPicker").style.display = "none";
                 document.getElementById("heroContent").style.display = "";
+                try { localStorage.removeItem(localSaveKey); } catch (err) {}
                 socket.emit("new_season", { managers: pendingManagerName, team_index: idx });
                 return;
             }
@@ -621,7 +644,9 @@
         });
 
         socket.on("connect", () => socket.emit("join", {}));
+        socket.on("state_missing", () => restoreLocalState());
         socket.on("state", payload => {
+            saveLocalState(payload);
             const wasWaiting = waitingForMatch;
             waitingForMatch = false;
             state = payload;

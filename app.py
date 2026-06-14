@@ -6,6 +6,8 @@ monkey.patch_all()
 import os
 import pickle
 import base64
+import hashlib
+import hmac
 
 from flask import Flask, render_template, request, redirect, url_for, session
 from flask_socketio import SocketIO, emit, join_room
@@ -50,8 +52,40 @@ def load_user(user_id: str):
 
 # ── State persistence ─────────────────────────────────────────────────────────
 
+def _encode_save(season: SeasonState) -> str:
+    return base64.b64encode(pickle.dumps(season)).decode()
+
+
+def _sign_save(blob: str) -> str:
+    secret = app.config["SECRET_KEY"].encode()
+    sig = hmac.new(secret, blob.encode(), hashlib.sha256).hexdigest()
+    return f"{blob}.{sig}"
+
+
+def _verify_save(signed_blob: str) -> str | None:
+    blob, sep, sig = signed_blob.rpartition(".")
+    if not sep or not blob or not sig:
+        return None
+    expected = hmac.new(app.config["SECRET_KEY"].encode(), blob.encode(), hashlib.sha256).hexdigest()
+    return blob if hmac.compare_digest(sig, expected) else None
+
+
+def _decode_save(blob: str) -> SeasonState | None:
+    try:
+        season = pickle.loads(base64.b64decode(blob.encode()))
+    except Exception:
+        return None
+    return season if isinstance(season, SeasonState) else None
+
+
+def _public_payload(season: SeasonState) -> dict:
+    payload = season.to_public_dict()
+    payload["save_blob"] = _sign_save(_encode_save(season))
+    return payload
+
+
 def _save(user_id: int, season: SeasonState) -> None:
-    blob = base64.b64encode(pickle.dumps(season)).decode()
+    blob = _encode_save(season)
     gs = GameSession.query.filter_by(user_id=user_id).first()
     if gs:
         gs.state_blob = blob
@@ -65,15 +99,12 @@ def _load(user_id: int) -> SeasonState | None:
     gs = GameSession.query.filter_by(user_id=user_id).first()
     if not gs or not gs.state_blob:
         return None
-    try:
-        return pickle.loads(base64.b64decode(gs.state_blob.encode()))
-    except Exception:
-        return None
+    return _decode_save(gs.state_blob)
 
 
 def _broadcast(uid: int, season: SeasonState) -> None:
     _save(uid, season)
-    socketio.emit("state", season.to_public_dict(), room=f"u{uid}")
+    socketio.emit("state", _public_payload(season), room=f"u{uid}")
 
 
 def _uid() -> int | None:
@@ -145,7 +176,26 @@ def handle_join(data=None):
     join_room(f"u{uid}")
     season = _load(uid)
     if season:
-        emit("state", season.to_public_dict())
+        emit("state", _public_payload(season))
+    else:
+        emit("state_missing", {})
+
+
+@socketio.on("restore_save")
+def handle_restore_save(data=None):
+    uid = _uid()
+    if uid is None:
+        return
+    data = data or {}
+    blob = _verify_save(str(data.get("save_blob") or ""))
+    if not blob:
+        emit("action_error", {"message": "Local save could not be verified."})
+        return
+    season = _decode_save(blob)
+    if not season:
+        emit("action_error", {"message": "Local save could not be restored."})
+        return
+    _broadcast(uid, season)
 
 
 @socketio.on("new_season")
@@ -210,7 +260,7 @@ def handle_end_season(data=None):
         return
     summary = season.end_season()
     _save(uid, season)
-    state = season.to_public_dict()
+    state = _public_payload(season)
     state["season_summary"] = summary
     socketio.emit("state", state, room=f"u{uid}")
 
