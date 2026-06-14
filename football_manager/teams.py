@@ -191,10 +191,19 @@ class Team:
             raise ValueError("Nobody wants an injured player!")
         sell_price = int(((random.random() * 5 + 8) * player.value) / 10)
         self.cash += sell_price
+        was_in_lineup = player_id in self.lineup_ids
         self.squad = [p for p in self.squad if p.id != player_id]
         self.lineup_ids = [pid for pid in self.lineup_ids if pid != player_id]
-        if len(self.lineup_ids) < LINEUP_SIZE:
-            self.auto_pick_lineup()
+        if was_in_lineup:
+            # Fill only the one vacated slot from available bench players
+            already_in = set(self.lineup_ids)
+            candidates = sorted(
+                [p for p in self.squad if p.injured_weeks == 0 and p.id not in already_in],
+                key=lambda p: p.skill + p.energy * 0.1,
+                reverse=True,
+            )
+            if candidates:
+                self.lineup_ids.append(candidates[0].id)
         return player
 
     def borrow(self, amount: int) -> None:
@@ -269,11 +278,20 @@ class Team:
                 if player.id in active_ids and random.randint(1, 20) == 20:
                     player.injured_weeks = 1
                     messages.append(f"{player.name} is injured.")
-        # Rebuild lineup if injuries
+        # Remove injured players from lineup, then fill only those vacated spots
+        original_size = len(self.lineup_ids)
         self.lineup_ids = [pid for pid in self.lineup_ids
                            if self._player_by_id(pid).injured_weeks == 0]
-        if len(self.lineup_ids) < LINEUP_SIZE:
-            self.auto_pick_lineup()
+        injured_count = original_size - len(self.lineup_ids)
+        if injured_count > 0:
+            already_in = set(self.lineup_ids)
+            candidates = sorted(
+                [p for p in self.squad if p.injured_weeks == 0 and p.id not in already_in],
+                key=lambda p: p.skill + p.energy * 0.1,
+                reverse=True,
+            )
+            for p in candidates[:injured_count]:
+                self.lineup_ids.append(p.id)
         return messages
 
     def apply_match_result(self, won: bool, drew: bool) -> None:

@@ -11,7 +11,7 @@
     <main class="shell">
         <section class="hero">
             <div class="pitch"></div>
-            <div class="hero-content">
+            <div id="heroContent" class="hero-content">
                 <div>
                     <h1>Football Manager</h1>
                     <p id="credit" class="muted"></p>
@@ -19,9 +19,16 @@
                 <form id="newSeasonForm" class="new-season">
                     <label for="managerName">Manager name</label>
                     <input id="managerName" type="text" maxlength="20" placeholder="Enter your name" value="{{ username }}">
-                    <button type="submit">New Season (Div 4)</button>
+                    <button type="submit">Choose Team →</button>
                     <a href="/logout" style="font-size:12px;color:rgba(245,246,232,0.45);text-decoration:none;align-self:center">Sign out</a>
                 </form>
+            </div>
+            <div id="teamPicker" class="team-picker" style="display:none">
+                <div class="team-picker-header">
+                    <button id="teamPickerBack" type="button" class="team-picker-back">← Back</button>
+                    <span id="teamPickerTitle" class="muted small"></span>
+                </div>
+                <div id="teamPickerList" class="team-picker-divs"></div>
             </div>
         </section>
 
@@ -61,6 +68,12 @@
             </div>
         </section>
 
+        <!-- Pre-match comparison -->
+        <section id="preMatchPanel" class="pre-match-panel" style="display:none">
+            <h2>Pre-Match</h2>
+            <div id="preMatchContent"></div>
+        </section>
+
         <!-- Play / End season -->
         <section class="match-panel">
             <div id="roundLabel" class="round-label"></div>
@@ -75,6 +88,7 @@
             <div class="panel">
                 <h2>Match Report</h2>
                 <div id="latestMatch" class="latest-match">Awaiting kick-off.</div>
+                <div id="otherMatches"></div>
             </div>
             <div class="panel">
                 <h2>Division <span id="tableDiv"></span> Table</h2>
@@ -106,12 +120,124 @@
     <script>
         const socket = io();
         let state = null;
+        let waitingForMatch = false;
+        let animating = false;
 
         const esc = (v) => String(v ?? "")
             .replaceAll("&", "&amp;").replaceAll("<", "&lt;")
             .replaceAll(">", "&gt;").replaceAll('"', "&quot;");
 
         const fmt = (n) => `£${Number(n).toLocaleString()}`;
+
+        const delay = (ms) => new Promise(r => setTimeout(r, ms));
+
+        function reportLine(line) {
+            const l = String(line ?? "");
+            if (l.startsWith("GOAL")) return `<li class="event-goal">${esc(l)}</li>`;
+            if (l.includes("intercepts") || l.includes("is saved")) return `<li class="event-save">${esc(l)}</li>`;
+            if (l.includes("shoots wide") || l.includes("shoot wide")) return `<li class="event-wide">${esc(l)}</li>`;
+            return `<li>${esc(l)}</li>`;
+        }
+
+        function reportLineClass(line) {
+            const l = String(line ?? "");
+            if (l.startsWith("GOAL")) return "event-goal";
+            if (l.includes("intercepts") || l.includes("is saved")) return "event-save";
+            if (l.includes("shoots wide") || l.includes("shoot wide")) return "event-wide";
+            return "";
+        }
+
+        function renderPreMatch() {
+            const pm = state?.pre_match;
+            const panel = document.getElementById("preMatchPanel");
+            if (!pm || state?.season_over) { panel.style.display = "none"; return; }
+            panel.style.display = "";
+            const humanName = state.human_teams?.[0]?.name ?? "";
+            const rows = [
+                ["Energy",   pm.human.energy,   pm.ai.energy],
+                ["Morale",   pm.human.morale,   pm.ai.morale],
+                ["Defence",  pm.human.defence,  pm.ai.defence],
+                ["Midfield", pm.human.midfield, pm.ai.midfield],
+                ["Attack",   pm.human.attack,   pm.ai.attack],
+            ];
+            document.getElementById("preMatchContent").innerHTML = `
+                <table class="prematch-table">
+                    <thead><tr>
+                        <th></th>
+                        <th class="pm-human">${esc(humanName)}</th>
+                        <th class="pm-ai">${esc(pm.opponent)}</th>
+                    </tr></thead>
+                    <tbody>${rows.map(([label, h, a]) => `
+                        <tr>
+                            <td class="pm-label">${label}</td>
+                            <td class="pm-human ${h > a ? "pm-stronger" : h < a ? "pm-weaker" : ""}">${h}</td>
+                            <td class="pm-ai ${a > h ? "pm-stronger" : a < h ? "pm-weaker" : ""}">${a}</td>
+                        </tr>`).join("")}
+                    </tbody>
+                </table>
+                <div class="pm-picked">PLAYERS PICKED = ${pm.human.lineup_size}</div>`;
+        }
+
+        function renderOtherMatches(matches, division) {
+            const el = document.getElementById("otherMatches");
+            if (!matches || !matches.length) { el.innerHTML = ""; return; }
+            const rows = matches.map(m => {
+                const homeWin = m.home_goals > m.away_goals;
+                const awayWin = m.away_goals > m.home_goals;
+                const draw = m.home_goals === m.away_goals;
+                const hc = homeWin ? "om-win" : draw ? "om-draw" : "om-lose";
+                const ac = awayWin ? "om-win" : draw ? "om-draw" : "om-lose";
+                return `<tr>
+                    <td class="${hc}">${esc(m.home)}</td>
+                    <td class="om-score">${m.home_goals} – ${m.away_goals}</td>
+                    <td class="${ac}">${esc(m.away)}</td>
+                </tr>`;
+            }).join("");
+            el.innerHTML = `
+                <h3 class="other-matches-title">Other Matches — Division ${division}</h3>
+                <table class="other-matches-table"><tbody>${rows}</tbody></table>`;
+        }
+
+        async function animateMatchReport(matches) {
+            const container = document.getElementById("latestMatch");
+            container.innerHTML = "";
+
+            for (const m of matches) {
+                const article = document.createElement("article");
+                article.className = "report";
+                container.appendChild(article);
+
+                const scoreEl = document.createElement("div");
+                scoreEl.className = "score";
+                scoreEl.style.visibility = "hidden";
+                scoreEl.textContent = `${m.home} ${m.home_goals} – ${m.away_goals} ${m.away}`;
+                article.appendChild(scoreEl);
+
+                const ul = document.createElement("ul");
+                article.appendChild(ul);
+
+                for (const line of m.report) {
+                    const l = String(line ?? "");
+                    const isFinal = l.startsWith("Final score:");
+
+                    if (isFinal) {
+                        await delay(1000);
+                        scoreEl.style.visibility = "visible";
+                    }
+
+                    await delay(500);
+
+                    const li = document.createElement("li");
+                    const cls = reportLineClass(l);
+                    if (cls) li.className = cls;
+                    li.textContent = l;
+                    ul.appendChild(li);
+                    li.scrollIntoView({ behavior: "smooth", block: "nearest" });
+                }
+            }
+
+            document.getElementById("playRound").disabled = state?.season_over ?? false;
+        }
 
         function render() {
             if (!state) return;
@@ -179,13 +305,6 @@
 
             // Match report
             const reports = state.last_matches || [];
-            function reportLine(line) {
-                const l = String(line ?? "");
-                if (l.startsWith("GOAL")) return `<li class="event-goal">${esc(l)}</li>`;
-                if (l.includes("intercepts") || l.includes("is saved")) return `<li class="event-save">${esc(l)}</li>`;
-                if (l.includes("shoots wide") || l.includes("shoot wide")) return `<li class="event-wide">${esc(l)}</li>`;
-                return `<li>${esc(l)}</li>`;
-            }
             document.getElementById("latestMatch").innerHTML = reports.length
                 ? reports.map(m => `
                     <article class="report">
@@ -193,6 +312,13 @@
                         <ul>${m.report.map(reportLine).join("")}</ul>
                     </article>`).join("")
                 : "Awaiting kick-off.";
+
+            // Other matches (only when not mid-animation)
+            if (!animating) {
+                renderOtherMatches(state.other_matches || [], state.division);
+            }
+
+            renderPreMatch();
 
             // Squad panel
             const human = (state.human_teams || [])[0];
@@ -276,15 +402,56 @@
             }
         }
 
+        const ALL_TEAM_NAMES = [
+            "Arsenal","Aston V.","Brighton","Coventry","Everton","Ipswich",
+            "Liverpool","Luton","Man.City","Man.Utd","Norwich","Notts.F.",
+            "Swansea","Spurs","Watford","West Ham",
+            "Blackburn","Bolton","Cambridge","Charlton","Chelsea","Crystal P.",
+            "Derby Co.","Fulham","Grimsby","Leeds","Middlesbro","Newcastle",
+            "Oldham","Q.P.R.","Rotherham","Sheff.Wed",
+            "Bradford","Brentford","Bristol R.","Cardiff","Doncaster","Exeter",
+            "Lincoln","Millwall","Newport","Orient","Oxford","Plymouth",
+            "Preston","Reading","Southend","Walsall",
+            "Blackpool","Bury","Colchester","Crewe","Darlington","Halifax",
+            "Hartlepool","Hereford","Hull","Mansfield","Port Vale","Rochdale",
+            "Scunthorpe","Stockport","Torquay","York City",
+        ];
+
+        let pendingManagerName = null;
+
+        function showTeamPicker(managerName) {
+            pendingManagerName = managerName;
+            document.getElementById("heroContent").style.display = "none";
+            document.getElementById("teamPicker").style.display = "";
+            document.getElementById("teamPickerTitle").textContent = `Manager: ${managerName}`;
+            let html = "";
+            for (let div = 1; div <= 4; div++) {
+                html += `<div class="team-div-group"><h3>Division ${div}</h3>`;
+                for (let i = 0; i < 16; i++) {
+                    const idx = (div - 1) * 16 + i;
+                    html += `<button class="team-btn" data-team-index="${idx}">${esc(ALL_TEAM_NAMES[idx])}</button>`;
+                }
+                html += `</div>`;
+            }
+            document.getElementById("teamPickerList").innerHTML = html;
+        }
+
         // Event listeners
         document.getElementById("newSeasonForm").addEventListener("submit", e => {
             e.preventDefault();
             const name = document.getElementById("managerName").value.trim() || "Manager";
-            socket.emit("new_season", { managers: name });
+            showTeamPicker(name);
         });
 
-        document.getElementById("playRound").addEventListener("click", () =>
-            socket.emit("play_round"));
+        document.getElementById("teamPickerBack").addEventListener("click", () => {
+            document.getElementById("teamPicker").style.display = "none";
+            document.getElementById("heroContent").style.display = "";
+        });
+
+        document.getElementById("playRound").addEventListener("click", () => {
+            waitingForMatch = true;
+            socket.emit("play_round");
+        });
 
         document.getElementById("endSeason").addEventListener("click", () =>
             socket.emit("end_season"));
@@ -315,6 +482,14 @@
                 socket.emit("set_tactics", { mode: b.dataset.mode })));
 
         document.addEventListener("click", e => {
+            const teamBtn = e.target.closest("[data-team-index]");
+            if (teamBtn) {
+                const idx = parseInt(teamBtn.dataset.teamIndex, 10);
+                document.getElementById("teamPicker").style.display = "none";
+                document.getElementById("heroContent").style.display = "";
+                socket.emit("new_season", { managers: pendingManagerName, team_index: idx });
+                return;
+            }
             const buy = e.target.closest("[data-buy]");
             if (buy) { socket.emit("buy_player", { team: buy.dataset.team, player_id: buy.dataset.buy }); return; }
             const sell = e.target.closest("[data-sell]");
@@ -333,7 +508,21 @@
         });
 
         socket.on("connect", () => socket.emit("join", {}));
-        socket.on("state", payload => { state = payload; render(); });
+        socket.on("state", payload => {
+            const wasWaiting = waitingForMatch;
+            waitingForMatch = false;
+            state = payload;
+            render();
+            if (wasWaiting && payload.last_matches?.length > 0) {
+                animating = true;
+                document.getElementById("playRound").disabled = true;
+                document.getElementById("otherMatches").innerHTML = "";
+                animateMatchReport(payload.last_matches).then(() => {
+                    animating = false;
+                    renderOtherMatches(payload.other_matches || [], payload.division);
+                });
+            }
+        });
         socket.on("action_error", payload => alert((payload?.message) || "Action failed."));
     </script>
 </body>

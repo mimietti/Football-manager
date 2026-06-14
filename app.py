@@ -159,7 +159,8 @@ def handle_new_season(data=None):
         managers = [p.strip() for p in raw.replace("\n", ",").split(",") if p.strip()]
     else:
         managers = [str(n).strip() for n in raw if str(n).strip()]
-    season = create_new_season(managers[:1] or [current_user.username])
+    team_index = int(data.get("team_index", 63))
+    season = create_new_season(managers[:1] or [current_user.username], team_index=team_index)
     _broadcast(uid, season)
 
 

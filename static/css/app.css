@@ -348,6 +348,115 @@ em.inj {
     margin-left: 6px;
     vertical-align: middle;
 }
+.pre-match-panel {
+    margin-top: 12px;
+    padding: 16px;
+    border: 1px solid var(--line);
+    border-radius: 8px;
+    background: var(--panel);
+}
+.prematch-table {
+    width: 100%;
+    border-collapse: collapse;
+    font-size: 14px;
+    font-family: "Courier New", monospace;
+}
+.prematch-table th,
+.prematch-table td {
+    padding: 5px 10px;
+    border-bottom: 1px solid rgba(255,255,255,0.06);
+    text-align: right;
+}
+.prematch-table th:first-child,
+.prematch-table td:first-child { text-align: left; }
+.prematch-table th.pm-human { color: var(--green); }
+.prematch-table th.pm-ai { color: #ff8a65; }
+.pm-label { color: var(--muted); }
+.pm-human { color: var(--green); }
+.pm-ai { color: #ff8a65; }
+.pm-stronger { font-weight: 900; }
+.pm-weaker { opacity: 0.55; }
+.pm-picked {
+    margin-top: 10px;
+    font-size: 13px;
+    font-weight: 700;
+    color: var(--accent);
+    font-family: "Courier New", monospace;
+    letter-spacing: 0.04em;
+}
+.other-matches-title {
+    margin: 16px 0 8px;
+    color: var(--accent);
+    font-size: 12px;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+    border-top: 1px solid var(--line);
+    padding-top: 14px;
+}
+.other-matches-table {
+    width: 100%;
+    font-size: 13px;
+    font-family: "Courier New", monospace;
+}
+.other-matches-table td {
+    padding: 3px 6px;
+    border: none;
+}
+.other-matches-table td.om-score {
+    text-align: center;
+    color: var(--text);
+    font-weight: 700;
+    width: 52px;
+}
+.other-matches-table td.om-win { color: var(--green); }
+.other-matches-table td.om-draw { color: var(--accent); }
+.other-matches-table td.om-lose { color: var(--muted); }
+.team-picker {
+    position: relative;
+    padding: 16px 0 8px;
+}
+.team-picker-header {
+    display: flex;
+    align-items: center;
+    gap: 14px;
+    margin-bottom: 12px;
+}
+.team-picker-back {
+    padding: 6px 14px;
+    font-size: 12px;
+    border-radius: 6px;
+}
+.team-picker-divs {
+    display: grid;
+    grid-template-columns: repeat(4, 1fr);
+    gap: 12px;
+}
+.team-div-group h3 {
+    margin: 0 0 7px;
+    color: var(--accent);
+    font-size: 11px;
+    letter-spacing: 0.09em;
+    text-transform: uppercase;
+}
+.team-btn {
+    display: block;
+    width: 100%;
+    text-align: left;
+    margin-bottom: 4px;
+    padding: 6px 10px;
+    border-radius: 6px;
+    font-size: 13px;
+    font-weight: 600;
+    background: rgba(255,255,255,0.05);
+    border-color: rgba(255,255,255,0.1);
+    color: var(--text);
+    cursor: pointer;
+}
+.team-btn:hover {
+    background: rgba(214,199,93,0.18);
+    border-color: var(--accent);
+    color: var(--accent);
+}
 @media (max-width: 780px) {
     .hero-content,
     .controls,
@@ -364,5 +473,8 @@ em.inj {
     }
     .finance-actions {
         grid-template-columns: 1fr 1fr;
+    }
+    .team-picker-divs {
+        grid-template-columns: repeat(2, 1fr);
     }
 }

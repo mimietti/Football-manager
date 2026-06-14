@@ -74,6 +74,7 @@ class SeasonState:
     skill_level: int = 1
     tactics: Tactics = field(default_factory=Tactics)
     last_human_matches: list[MatchResult] = field(default_factory=list)
+    last_other_matches: list[dict] = field(default_factory=list)
     transfer_market: list[Player] = field(default_factory=list)
     season_number: int = 0
     transfer_window: bool = False   # opens after each match, closes when next match starts
@@ -158,6 +159,7 @@ class SeasonState:
             return self.last_human_matches
 
         self.transfer_window = False   # close window while match is being played
+        self.last_other_matches = []   # cleared each round; only populated for league
         lc, cup_round_next, ml_next = self._next_lc()
 
         # Advance counters
@@ -350,12 +352,15 @@ class SeasonState:
         random.shuffle(available)
         pairs = [(available[i], available[i + 1]) for i in range(0, len(available) - 1, 2)]
 
+        other_results: list[dict] = []
         for home_name, away_name in pairs:
             home_slot = self._div_slot(home_name)
             away_slot = self._div_slot(away_name)
             home_pts = self.div_pts[home_slot] if home_slot >= 0 else 0
             away_pts = self.div_pts[away_slot] if away_slot >= 0 else 0
             hg, ag = simulate_other_result(home_pts, away_pts, ml)
+
+            other_results.append({"home": home_name, "home_goals": hg, "away": away_name, "away_goals": ag})
 
             if home_slot >= 0:
                 self.div_pts[home_slot] += 3 if hg > ag else (1 if hg == ag else 0)
@@ -377,6 +382,8 @@ class SeasonState:
                     team.goals_against = self.div_ga[slot]
                 except StopIteration:
                     pass
+
+        self.last_other_matches = other_results
 
     # ── Management actions ───────────────────────────────────────────────────
 
@@ -496,6 +503,44 @@ class SeasonState:
 
         return summary
 
+    # ── Pre-match comparison ─────────────────────────────────────────────────
+
+    def _pre_match_attrs(self) -> dict | None:
+        """Human team actual attrs vs estimated AI attrs for the next fixture."""
+        human = self.human_teams()[0] if self.human_teams() else None
+        if not human or self.season_over:
+            return None
+        nf = self.next_fixture_description()
+        opponent = nf.get("opponent", "")
+        if not opponent:
+            return None
+        lc, _, ml_next = self._next_lc()
+        player_div_index = max(0, human.division - 1)
+        if lc == 1:  # cup
+            opp_indices = [i for i, n in enumerate(self.all_team_names) if n == opponent]
+            opp_div_index = (opp_indices[0] // DIVISION_SIZE) if opp_indices else 3
+            base = self.skill_level + player_div_index - (opp_div_index + 1)
+            ai_val = max(1, min(20, 8 + base))   # 8 = midpoint of randint(1,16)
+        else:  # league
+            opp_slot = self._div_slot(opponent)
+            ai_pts = self.div_pts[opp_slot] if opp_slot >= 0 else 0
+            form = int(ai_pts / max(1, ml_next))
+            ai_val = max(1, min(20, 7 + self.skill_level + form))  # 7 = midpoint of randint(1,14)
+        from .match_engine import _retro_player_attrs
+        a = _retro_player_attrs(human)
+        return {
+            "opponent": opponent,
+            "human": {
+                "energy": a[0], "morale": a[1],
+                "defence": a[2], "midfield": a[3], "attack": a[4],
+                "lineup_size": len(human.lineup_ids),
+            },
+            "ai": {
+                "energy": ai_val, "morale": ai_val,
+                "defence": ai_val, "midfield": ai_val, "attack": ai_val,
+            },
+        }
+
     # ── Serialisation ────────────────────────────────────────────────────────
 
     def to_public_dict(self) -> dict:
@@ -543,9 +588,11 @@ class SeasonState:
             "formation": self.tactics.formation,
             "pressing": self.tactics.pressing,
             "next_fixture": next_fixture,
+            "pre_match": self._pre_match_attrs(),
             "human_teams": [t.to_dict() for t in self.human_teams()],
             "table": league_table,
             "last_matches": [m.to_dict() for m in self.last_human_matches],
+            "other_matches": self.last_other_matches,
             "transfer_market": [p.to_dict(False) for p in self.transfer_market],
             "transfer_window": self.transfer_window,
             "inspiration": "Faithful port of the 1982 Football Manager by Kevin & John Toms.",
@@ -557,14 +604,13 @@ class SeasonState:
 def create_new_season(
     manager_names: list[str] | None = None,
     league_size: int = 16,          # ignored in retro — always 4×16
+    team_index: int = 63,           # 0-63 across all 64 teams; default York City
 ) -> SeasonState:
     managers = [n.strip() for n in (manager_names or ["Manager"]) if n.strip()] or ["Manager"]
     manager_name = managers[0]
-    division = 4
-    d2 = retro_div_multiplier(division)
-
-    # BASIC: player always takes the slot of t$(64) = "York City" in Div 4
-    team_name = ALL_TEAM_NAMES[63]  # "York City" (index 63, last in Div4)
+    team_index = max(0, min(63, team_index))
+    division = (team_index // 16) + 1
+    team_name = ALL_TEAM_NAMES[team_index]
 
     human_team, unsigned_players = create_retro_human_team(manager_name, team_name, division)
 
