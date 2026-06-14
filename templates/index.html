@@ -26,7 +26,7 @@
             <div id="teamPicker" class="team-picker" style="display:none">
                 <div class="team-picker-header">
                     <button id="teamPickerBack" type="button" class="team-picker-back">← Back</button>
-                    <span id="teamPickerTitle" class="muted small"></span>
+                    <span id="teamPickerTitle" class="team-picker-title"></span>
                 </div>
                 <div id="teamPickerList" class="team-picker-divs"></div>
             </div>
@@ -130,6 +130,7 @@
         let animating = false;
         let uiPhase = "pre";
         const localSaveKey = "rfm-save:" + {{ username|tojson }};
+        let playResponseTimer = null;
 
         const esc = (v) => String(v ?? "")
             .replaceAll("&", "&amp;").replaceAll("<", "&lt;")
@@ -163,6 +164,25 @@
             if (saveBlob) {
                 socket.emit("restore_save", { save_blob: saveBlob });
             }
+        }
+
+        function getLocalSaveBlob() {
+            try {
+                return localStorage.getItem(localSaveKey) || "";
+            } catch (err) {
+                return "";
+            }
+        }
+
+        function clearPlayWait() {
+            waitingForMatch = false;
+            if (playResponseTimer) {
+                clearTimeout(playResponseTimer);
+                playResponseTimer = null;
+            }
+            const playButton = document.getElementById("playRound");
+            playButton.textContent = "Play";
+            playButton.disabled = state?.season_over ?? false;
         }
 
         function applyUiPhase() {
@@ -350,6 +370,12 @@
 
         function render() {
             if (!state) return;
+            const hasActiveGame = (state.human_teams || []).length > 0;
+            document.getElementById("heroContent").style.display = "";
+            document.getElementById("newSeasonForm").style.display = hasActiveGame ? "none" : "";
+            if (hasActiveGame) {
+                document.getElementById("teamPicker").style.display = "none";
+            }
 
             // Status bar
             document.getElementById("statusDivision").textContent =
@@ -392,7 +418,7 @@
                 : `Division ${state.division} · Match ${state.league_match + 1}`;
 
             // Play / end-season buttons
-            document.getElementById("playRound").disabled = state.season_over;
+            document.getElementById("playRound").disabled = state.season_over || waitingForMatch;
             document.getElementById("endSeason").style.display =
                 state.season_over ? "inline-flex" : "none";
 
@@ -551,7 +577,7 @@
             pendingManagerName = managerName;
             document.getElementById("heroContent").style.display = "none";
             document.getElementById("teamPicker").style.display = "";
-            document.getElementById("teamPickerTitle").textContent = `Manager: ${managerName}`;
+            document.getElementById("teamPickerTitle").textContent = "Choose a team";
             let html = "";
             for (let div = 1; div <= 4; div++) {
                 html += `<div class="team-div-group"><h3>Division ${div}</h3>`;
@@ -578,9 +604,17 @@
 
         document.getElementById("playRound").addEventListener("click", () => {
             waitingForMatch = true;
-            uiPhase = "playing";
-            applyUiPhase();
-            socket.emit("play_round");
+            const playButton = document.getElementById("playRound");
+            playButton.disabled = true;
+            playButton.textContent = "Playing...";
+            if (playResponseTimer) clearTimeout(playResponseTimer);
+            playResponseTimer = setTimeout(() => {
+                clearPlayWait();
+                uiPhase = inferPhase(state);
+                render();
+                alert("Match did not start. The local save was restored if available; try Play again.");
+            }, 8000);
+            socket.emit("play_round", { save_blob: getLocalSaveBlob() });
         });
 
         document.getElementById("endSeason").addEventListener("click", () =>
@@ -648,7 +682,7 @@
         socket.on("state", payload => {
             saveLocalState(payload);
             const wasWaiting = waitingForMatch;
-            waitingForMatch = false;
+            clearPlayWait();
             state = payload;
             if (wasWaiting && payload.last_matches?.length > 0) {
                 animating = true;
@@ -668,7 +702,12 @@
                 });
             }
         });
-        socket.on("action_error", payload => alert((payload?.message) || "Action failed."));
+        socket.on("action_error", payload => {
+            clearPlayWait();
+            uiPhase = inferPhase(state);
+            if (state) render();
+            alert((payload?.message) || "Action failed.");
+        });
     </script>
 </body>
 </html>

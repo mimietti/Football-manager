@@ -107,6 +107,19 @@ def _broadcast(uid: int, season: SeasonState) -> None:
     socketio.emit("state", _public_payload(season), room=f"u{uid}")
 
 
+def _load_or_restore(uid: int, data: dict | None) -> SeasonState | None:
+    season = _load(uid)
+    if season:
+        return season
+    blob = _verify_save(str((data or {}).get("save_blob") or ""))
+    if not blob:
+        return None
+    season = _decode_save(blob)
+    if season:
+        _save(uid, season)
+    return season
+
+
 def _uid() -> int | None:
     # Flask-Login stores user_id in session['_user_id']; more reliable than
     # current_user proxy inside SocketIO handlers under gevent.
@@ -237,8 +250,11 @@ def handle_play_round(data=None):
     uid = _uid()
     if uid is None:
         return
-    season = _load(uid)
+    data = data or {}
+    season = _load_or_restore(uid, data)
     if not season:
+        emit("state_missing", {})
+        emit("action_error", {"message": "No saved season found. Choose a team first."})
         return
     if season.season_over:
         emit("action_error", {"message": "Season is over — start a new season or advance to the next."})

@@ -440,14 +440,15 @@ em.inj {
     background: var(--panel);
 }
 .prematch-table {
-    width: 100%;
+    width: min(680px, 100%);
     border-collapse: collapse;
-    font-size: 14px;
-    font-family: "Courier New", monospace;
+    margin: 4px auto 0;
+    font-size: 16px;
+    font-family: "Trebuchet MS", "Segoe UI", sans-serif;
 }
 .prematch-table th,
 .prematch-table td {
-    padding: 5px 10px;
+    padding: 8px 12px;
     border-bottom: 1px solid rgba(255,255,255,0.06);
     text-align: right;
 }
@@ -461,11 +462,11 @@ em.inj {
 .pm-stronger { font-weight: 900; }
 .pm-weaker { opacity: 0.55; }
 .pm-picked {
-    margin-top: 10px;
-    font-size: 13px;
+    width: min(680px, 100%);
+    margin: 12px auto 0;
+    font-size: 14px;
     font-weight: 700;
     color: var(--accent);
-    font-family: "Courier New", monospace;
     letter-spacing: 0.04em;
 }
 .other-matches-title {
@@ -513,6 +514,13 @@ em.inj {
     align-items: center;
     gap: 14px;
     margin-bottom: 12px;
+}
+.team-picker-title {
+    color: #fff2a8;
+    font-size: 14px;
+    font-weight: 900;
+    letter-spacing: 0.06em;
+    text-transform: uppercase;
 }
 .team-picker-back {
     padding: 6px 14px;
