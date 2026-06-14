@@ -113,7 +113,10 @@
                 </div>
                 <div class="panel-title-row">
                     <h2>Squad — <span id="squadTeamName"></span></h2>
-                    <button id="renameTeamButton" class="title-action" type="button">Rename Club</button>
+                    <div class="title-actions">
+                        <span id="lineupBadge" class="lineup-badge"></span>
+                        <button id="renameTeamButton" class="title-action" type="button">Rename Club</button>
+                    </div>
                 </div>
                 <div id="teamSummary" class="team-summary"></div>
                 <div class="finance-actions">
@@ -1037,6 +1040,9 @@
             const human = (state.human_teams || [])[0];
             if (human) {
                 document.getElementById("squadTeamName").textContent = human.name;
+                const lineupBadge = document.getElementById("lineupBadge");
+                lineupBadge.textContent = `Lineup ${human.lineup_size}/11`;
+                lineupBadge.className = `lineup-badge ${human.lineup_size === 11 ? "lineup-ok" : "lineup-bad"}`;
                 renderTeamSummary(human);
                 const sortedSquad = [...(human.squad || [])].sort((a, b) => {
                     const order = { D: 0, M: 1, A: 2 };
