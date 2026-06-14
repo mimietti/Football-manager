@@ -667,7 +667,7 @@ def create_new_season(
         retro_cup_round=0,
         division=division,
         skill_level=1,
-        tactics=Tactics(engine_mode="retro"),
+        tactics=Tactics(engine_mode="modern"),
         transfer_market=unsigned_players,
         season_number=1,
     )

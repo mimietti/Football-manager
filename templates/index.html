@@ -1,4 +1,4 @@
-<!doctype html>
+﻿<!doctype html>
 <html lang="en">
 <head>
     <meta charset="utf-8">
@@ -17,8 +17,7 @@
                     <p id="credit" class="muted"></p>
                 </div>
                 <form id="newSeasonForm" class="new-season">
-                    <label for="managerName">Manager name</label>
-                    <input id="managerName" type="text" maxlength="20" placeholder="Enter your name" value="{{ username }}">
+                    <input id="managerName" type="hidden" value="{{ username }}">
                     <button type="submit">Choose Team →</button>
                     <a href="/logout" style="font-size:12px;color:rgba(245,246,232,0.45);text-decoration:none;align-self:center">Sign out</a>
                 </form>
@@ -297,45 +296,45 @@
 
         // Lines skipped during animation — filler with no match value
         function isBoringLine(l) {
-            return l.endsWith(“ defend.”) || l.startsWith(“Midfield battle”);
+            return l.endsWith(" defend.") || l.startsWith("Midfield battle");
         }
 
         async function animateMatchReport(matches) {
-            const container = document.getElementById(“latestMatch”);
-            container.innerHTML = “”;
+            const container = document.getElementById("latestMatch");
+            container.innerHTML = "";
 
             for (const m of matches) {
                 let curHome = 0, curAway = 0;
-                const humanName = (state.human_teams || [])[0]?.name ?? “”;
+                const humanName = (state.human_teams || [])[0]?.name ?? "";
                 const humanIsHome = m.home === humanName;
                 const viz = ensureViz();
                 viz.reset(m.home, m.away);
 
-                const article = document.createElement(“article”);
-                article.className = “report”;
+                const article = document.createElement("article");
+                article.className = "report";
                 container.appendChild(article);
 
-                const scoreEl = document.createElement(“div”);
-                scoreEl.className = “score”;
+                const scoreEl = document.createElement("div");
+                scoreEl.className = "score";
                 scoreEl.textContent = `${m.home} 0 – 0 ${m.away}`;
                 article.appendChild(scoreEl);
 
-                const ul = document.createElement(“ul”);
+                const ul = document.createElement("ul");
                 article.appendChild(ul);
 
                 const financeLines = [];
 
                 for (const line of m.report) {
-                    const l = String(line ?? “”);
+                    const l = String(line ?? "");
 
                     if (isFinanceLine(l)) { financeLines.push(l); continue; }
                     if (isBoringLine(l)) continue;
 
-                    const isFinal  = l.startsWith(“Final score:”);
-                    const isGoal   = l.startsWith(“GOAL”);
-                    const isMiss   = l.includes(“ shoots wide”) || l.includes(“ shoot wide”);
-                    const isSaved  = l.includes(“ is saved”);
-                    const isIntercept = l.includes(“ intercepts”);
+                    const isFinal  = l.startsWith("Final score:");
+                    const isGoal   = l.startsWith("GOAL");
+                    const isMiss   = l.includes(" shoots wide") || l.includes(" shoot wide");
+                    const isSaved  = l.includes(" is saved");
+                    const isIntercept = l.includes(" intercepts");
                     const prevHome = curHome, prevAway = curAway;
 
                     if (isGoal) {
@@ -349,36 +348,36 @@
                         viz.setScore(curHome, curAway);
                         viz.goal(humanScored);
                     } else if (isMiss) {
-                        // Attacker name precedes “shoots wide”
+                        // Attacker name precedes "shoots wide"
                         const humanMissed = humanName && l.startsWith(humanName);
-                        viz.setState(humanMissed ? “attack-human” : “attack-ai”);
+                        viz.setState(humanMissed ? "attack-human" : "attack-ai");
                         viz.noGoal(humanMissed);
                     } else if (isSaved) {
-                        // “X is saved” → X was the attacker
+                        // "X is saved" → X was the attacker
                         const humanAttacking = humanName && l.startsWith(humanName);
-                        viz.setState(humanAttacking ? “attack-human” : “attack-ai”);
+                        viz.setState(humanAttacking ? "attack-human" : "attack-ai");
                         viz.saved(humanAttacking);
                     } else if (isIntercept) {
-                        // “Y intercepts” → Y is the defender, so other team was attacking
+                        // "Y intercepts" → Y is the defender, so other team was attacking
                         const humanDefends = humanName && l.startsWith(humanName);
-                        viz.setState(humanDefends ? “attack-ai” : “attack-human”);
+                        viz.setState(humanDefends ? "attack-ai" : "attack-human");
                         viz.saved(humanDefends);
                     } else if (isFinal) {
                         curHome = m.home_goals;
                         curAway = m.away_goals;
                         scoreEl.textContent = `${m.home} ${curHome} – ${curAway} ${m.away}`;
-                        viz.setState(“full-time”);
+                        viz.setState("full-time");
                         viz.clearBanner();
                         await delay(600);
                     } else {
                         // Pressure / pressure lines begin with the attacking team name
                         const humanAttacking = humanName && l.startsWith(humanName);
-                        viz.setState(humanAttacking ? “attack-human” : “attack-ai”);
+                        viz.setState(humanAttacking ? "attack-human" : "attack-ai");
                     }
 
-                    if (l.startsWith(“Highlights:”)) {
-                        l.replace(/^Highlights:\s*/, “”).replace(/\.$/, “”).split(“, “).forEach(part => {
-                            const sp = part.lastIndexOf(“ “);
+                    if (l.startsWith("Highlights:")) {
+                        l.replace(/^Highlights:\s*/, "").replace(/\.$/, "").split(", ").forEach(part => {
+                            const sp = part.lastIndexOf(" ");
                             const name = part.substring(0, sp);
                             const gn = parseInt(part.substring(sp + 1));
                             if (!isNaN(gn)) {
@@ -389,22 +388,22 @@
                         scoreEl.textContent = `${m.home} ${curHome} – ${curAway} ${m.away}`;
                     }
 
-                    const li = document.createElement(“li”);
+                    const li = document.createElement("li");
                     const cls = reportLineClass(l);
                     if (cls) li.className = cls;
                     li.textContent = l;
                     ul.appendChild(li);
-                    li.scrollIntoView({ behavior: “smooth”, block: “nearest” });
+                    li.scrollIntoView({ behavior: "smooth", block: "nearest" });
 
                     await delay(isGoal ? 1800 : isMiss || isSaved || isIntercept ? 1400 : isFinal ? 900 : 900);
                 }
 
                 if (financeLines.length) {
-                    article.insertAdjacentHTML(“beforeend”, financeHtml(financeLines));
+                    article.insertAdjacentHTML("beforeend", financeHtml(financeLines));
                 }
             }
 
-            document.getElementById(“playRound”).disabled = state?.season_over ?? false;
+            document.getElementById("playRound").disabled = state?.season_over ?? false;
         }
 
         // ── Canvas pitch visualiser ───────────────────────────────────────────
