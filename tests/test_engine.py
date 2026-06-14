@@ -143,11 +143,13 @@ def test_retro_rename_player_and_team():
     assert original_team_name not in season.all_team_names
 
 
-def test_retro_match_report_contains_highlights():
+def test_retro_match_report_reads_like_live_commentary():
     season = create_new_season(["Tester"])
     results = season.play_round()
     report = " ".join(results[0].report)
-    assert "Highlights:" in report
+    assert "Final score:" in report
+    assert "create a" not in report
+    assert "highlight" not in report.lower()
     assert set(results[0].factor_scores) == {"energy", "morale", "defence", "midfield", "attack"}
 
 

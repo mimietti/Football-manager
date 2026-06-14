@@ -134,6 +134,28 @@ def _scoring_attempt() -> int:
     return 1 if random.random() < 0.28 else 0
 
 
+def _retro_pressure_line(team_name: str, factor: str) -> str:
+    lines = {
+        "energy": f"{team_name} start the move at a high tempo.",
+        "morale": f"{team_name} look confident and push players forward.",
+        "defence": f"{team_name} win it back and break quickly.",
+        "midfield": f"{team_name} string passes together through midfield.",
+        "attack": f"{team_name} carve out space around the box.",
+    }
+    return lines.get(factor, f"{team_name} build another attack.")
+
+
+def _retro_missed_line(team_name: str, factor: str) -> str:
+    lines = {
+        "energy": f"{team_name} force the pace, but the final ball runs through.",
+        "morale": f"{team_name} keep the pressure on, but the shot is blocked.",
+        "defence": f"{team_name} counter from deep, but the chance is cleared.",
+        "midfield": f"{team_name} work it into a good area, but the effort goes wide.",
+        "attack": f"{team_name} get a sight of goal, but the keeper is equal to it.",
+    }
+    return lines.get(factor, f"{team_name} threaten, but cannot finish the move.")
+
+
 def _simulate_retro_match(
     home: Team,
     away: Team,
@@ -158,32 +180,63 @@ def _simulate_retro_match(
 
     player_goals = 0
     ai_goals = 0
+    home_score = 0
+    away_score = 0
+    had_chance = False
     factor_scores: dict[str, int] = {}
     report: list[str] = [f"{human_team.name} v {ai_team.name}"]
+
+    def record_goal(team_name: str) -> None:
+        nonlocal home_score, away_score
+        if team_name == home.name:
+            home_score += 1
+        else:
+            away_score += 1
+        report.append(f"GOAL - {team_name}! ({home_score}-{away_score})")
 
     for idx, factor in enumerate(RETRO_FACTORS):
         pa, ua = a[idx], u[idx]
         factor_scores[factor] = pa - ua
 
         if random.randint(1, 100) + (pa - ua) * 5 >= 75:
+            had_chance = True
             g = _scoring_attempt() + _scoring_attempt()
             player_goals += g
-            report.append(f"{human_team.name} create a {factor.lower()} highlight.")
+            report.append(_retro_pressure_line(human_team.name, factor))
+            if g:
+                for _ in range(g):
+                    record_goal(human_team.name)
+            else:
+                report.append(_retro_missed_line(human_team.name, factor))
 
         if random.randint(1, 100) + (ua - pa) * 5 >= 75:
+            had_chance = True
             g = _scoring_attempt() + _scoring_attempt()
             ai_goals += g
-            report.append(f"{ai_team.name} create a {factor.lower()} highlight.")
+            report.append(_retro_pressure_line(ai_team.name, factor))
+            if g:
+                for _ in range(g):
+                    record_goal(ai_team.name)
+            else:
+                report.append(_retro_missed_line(ai_team.name, factor))
 
-    if player_goals + ai_goals == 0:
-        player_goals += _scoring_attempt()
-        ai_goals += _scoring_attempt()
-        report.append("No highlights — each side takes a late chance.")
+    if not had_chance:
+        report.append("A tight first half gives both sides little room to play.")
+        late_player_goals = _scoring_attempt()
+        late_ai_goals = _scoring_attempt()
+        if late_player_goals or late_ai_goals:
+            report.append("The game finally opens up late on.")
+        for _ in range(late_player_goals):
+            player_goals += 1
+            record_goal(human_team.name)
+        for _ in range(late_ai_goals):
+            ai_goals += 1
+            record_goal(ai_team.name)
+        if not late_player_goals and not late_ai_goals:
+            report.append("Neither side can turn possession into a clear chance.")
 
-    report.append(f"Highlights: {human_team.name} {player_goals}, {ai_team.name} {ai_goals}.")
-
-    home_goals = player_goals if human_is_home else ai_goals
-    away_goals = ai_goals if human_is_home else player_goals
+    home_goals = home_score
+    away_goals = away_score
     report.extend(_score_report(home, away, home_goals, away_goals))
 
     return MatchResult(home.name, away.name, home_goals, away_goals, report, factor_scores)
