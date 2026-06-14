@@ -140,6 +140,15 @@ button:disabled {
 .management-layout {
     grid-template-columns: 1fr;
 }
+.management-layout > .panel {
+    display: flex;
+    flex-direction: column;
+}
+.management-layout .transfer-inline { order: 1; }
+.management-layout .finance-actions { order: 2; }
+.management-layout .panel-title-row { order: 3; }
+.management-layout .team-summary { order: 4; }
+.management-layout .squad-grid { order: 5; }
 .panel,
 .match-panel {
     padding: 16px;

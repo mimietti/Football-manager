@@ -107,12 +107,12 @@ def test_transfer_window_offers_only_one_player_and_limits_actions():
         except ValueError:
             pass
 
-    sellable = next(p for p in human.squad if p.id not in human.lineup_ids)
+    sellable = next(p for p in human.squad if p.id not in human.lineup_ids and p.injured_weeks == 0)
     original_value = sellable.value
     season.sell_player(human.name, sellable.id)
     assert sellable.value == original_value
 
-    another_sellable = next((p for p in human.squad if p.id not in human.lineup_ids), None)
+    another_sellable = next((p for p in human.squad if p.id not in human.lineup_ids and p.injured_weeks == 0), None)
     if another_sellable:
         try:
             season.sell_player(human.name, another_sellable.id)
