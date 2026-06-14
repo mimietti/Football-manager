@@ -775,26 +775,24 @@
             _attackGoal() {
                 const g=this.g;
                 const P=(x,y)=>this._attackPoint(x,y);
-                const a=P(.53,.28), b=P(.53,.55);
-                const c=P(.62,.22), d=P(.72,.31), e=P(.72,.59), f=P(.62,.70);
-                const g1=P(.58,.31), g2=P(.67,.38), g3=P(.67,.60), g4=P(.58,.61);
+                const a=P(.55,.31), b=P(.55,.56);
+                const c=P(.64,.24), d=P(.73,.34), e=P(.73,.61), f=P(.64,.69);
                 g.save();
                 g.strokeStyle="#ffff00";
                 g.lineWidth=Math.max(2.2, this._attackRect().w*0.004);
                 g.lineJoin="round";
                 g.lineCap="round";
                 g.beginPath();
-                // BASIC-style goal: near post, roof, far post and floor in the same perspective.
+                // BASIC-style open goal: front post, roof, back post and floor.
                 g.moveTo(a.x,a.y); g.lineTo(b.x,b.y);
                 g.moveTo(a.x,a.y); g.lineTo(c.x,c.y); g.lineTo(d.x,d.y);
                 g.moveTo(b.x,b.y); g.lineTo(f.x,f.y); g.lineTo(e.x,e.y);
                 g.moveTo(d.x,d.y); g.lineTo(e.x,e.y);
                 g.moveTo(c.x,c.y); g.lineTo(f.x,f.y);
-                // Inner net frame, kept small so it reads as a goal rather than a box.
-                g.moveTo(a.x,a.y); g.lineTo(g1.x,g1.y); g.lineTo(g2.x,g2.y); g.lineTo(d.x,d.y);
-                g.moveTo(b.x,b.y); g.lineTo(g4.x,g4.y); g.lineTo(g3.x,g3.y); g.lineTo(e.x,e.y);
-                g.moveTo(g1.x,g1.y); g.lineTo(g4.x,g4.y);
-                g.moveTo(g2.x,g2.y); g.lineTo(g3.x,g3.y);
+                // One light side rib is enough to imply the net without making a cube.
+                const r1=P(.60,.34), r2=P(.69,.42), r3=P(.69,.58), r4=P(.60,.61);
+                g.moveTo(r1.x,r1.y); g.lineTo(r2.x,r2.y);
+                g.moveTo(r4.x,r4.y); g.lineTo(r3.x,r3.y);
                 g.stroke();
                 g.restore();
             }
