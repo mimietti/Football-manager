@@ -201,11 +201,11 @@ button:disabled {
 }
 .scoreboard-still {
     position: relative;
-    min-height: 210px;
+    min-height: min(60vh, 600px);
     overflow: hidden;
     border: 1px solid var(--line);
     border-radius: 8px;
-    background: #19d934;
+    background: #00bb00;
 }
 .pitch-canvas {
     position: absolute;
@@ -426,7 +426,7 @@ select {
     gap: 3px;
 }
 .squad-grid {
-    grid-template-columns: repeat(auto-fit, minmax(360px, 1fr));
+    grid-template-columns: repeat(auto-fit, minmax(490px, 1fr));
     align-items: start;
 }
 .squad-column {

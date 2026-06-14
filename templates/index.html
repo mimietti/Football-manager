@@ -412,16 +412,19 @@
                 this.cv = document.getElementById(id);
                 if (!this.cv) return;
                 this.g = this.cv.getContext("2d");
-                this.W = 640; this.H = 288;
+                // Fit canvas to its CSS container so it fills the tall scoreboard
+                const par = this.cv.parentElement;
+                this.W = par.clientWidth  || 640;
+                this.H = par.clientHeight || 420;
                 this.cv.width = this.W; this.cv.height = this.H;
                 this.homeTeam = ""; this.awayTeam = "";
                 this.hg = 0; this.ag = 0;
                 this.phase = 0;
                 this.goalTick = 0; this.goalHuman = true;
-                // Parallelogram pitch corners (px=0 = home goal end, px=1 = away goal end)
-                this.C = { tl:{x:60,y:58}, tr:{x:608,y:24}, bl:{x:72,y:254} };
-                const C = this.C;
-                C.br = {x:C.bl.x+C.tr.x-C.tl.x, y:C.bl.y+C.tr.y-C.tl.y};
+                this._vs = "kickoff";
+                // Parallelogram corners relative to canvas size
+                this.C = {};
+                this._corners();
                 // Players in pitch coords (px=along pitch, py=across pitch 0=top 1=bottom)
                 this.pl = [
                     {px:.08,py:.50,tpx:.08,tpy:.50,h:true},
@@ -437,6 +440,31 @@
                 this._raf=requestAnimationFrame(this._loop);
             }
 
+            // Set parallelogram corners relative to current canvas size
+            _corners() {
+                const W=this.W, H=this.H;
+                this.C.tl = {x:W*0.090, y:H*0.18};
+                this.C.tr = {x:W*0.952, y:H*0.06};
+                this.C.bl = {x:W*0.108, y:H*0.90};
+                const C=this.C;
+                C.br = {x:C.bl.x+C.tr.x-C.tl.x, y:C.bl.y+C.tr.y-C.tl.y};
+            }
+
+            // Apply zoom transform: pan/zoom to focus on attacking goal
+            _setView(g) {
+                const W=this.W, H=this.H, vs=this._vs||"kickoff";
+                if(vs!=="attack-human"&&vs!=="attack-ai") return;
+                const {tl,tr,bl} = this.C;
+                const pitchW = tr.x - tl.x;   // screen width of pitch
+                const pitchH = bl.y - tl.y;   // screen height of pitch
+                const vw = pitchW * 0.62;      // show 62% of pitch width
+                const scale = W / vw;
+                const vx0 = vs==="attack-human" ? tl.x + pitchW*0.38 : tl.x;
+                const viewH = H / scale;
+                const vy0 = tl.y + (pitchH - viewH) * 0.5;
+                g.setTransform(scale, 0, 0, scale, -vx0*scale, -vy0*scale);
+            }
+
             // Pitch coord (0..1) to screen coord
             _ps(px, py) {
                 const {tl,tr,bl} = this.C;
@@ -448,7 +476,7 @@
 
             reset(home, away) {
                 this.homeTeam=home; this.awayTeam=away;
-                this.hg=0; this.ag=0;
+                this.hg=0; this.ag=0; this._vs="kickoff";
                 this.goalTick=0; this.bannType=null; this.bannTick=0;
                 this._form("kickoff");
             }
@@ -481,7 +509,7 @@
             }
 
             clearBanner() { this.bannType=null; this.bannTick=0; this.goalTick=0; }
-            setState(name) { this._form(name); }
+            setState(name) { this._vs=name; this._form(name); }
 
             _form(name) {
                 const F = {
@@ -557,6 +585,9 @@
             _draw() {
                 const {g,W,H}=this;
                 g.fillStyle="#00bb00"; g.fillRect(0,0,W,H);
+                // Save identity, apply zoom for pitch drawing
+                g.save();
+                this._setView(g);
                 g.strokeStyle="#ffff00"; g.lineWidth=1.5;
                 const {tl,tr,bl,br}=this.C;
                 g.beginPath(); g.moveTo(tl.x,tl.y); g.lineTo(tr.x,tr.y);
@@ -575,6 +606,7 @@
                     const s=this._ps(p.px,p.py);
                     this._fig(s.x,s.y,p.h,(Math.abs(p.px-p.tpx)+Math.abs(p.py-p.tpy))>0.015);
                 }
+                g.restore(); // banners drawn in screen space (no zoom)
                 if(this.goalTick>0)this._goalBanner(W,H,Math.min(1,this.goalTick/8));
                 else if(this.bannTick>0)this._simBanner(W,H,Math.min(1,this.bannTick/8));
             }
@@ -762,8 +794,8 @@
                             <h3>${label}</h3>
                             <div class="squad-table-head">
                                 <span>Name</span>
-                                <span>Sk</span>
-                                <span>En</span>
+                                <span>Skill</span>
+                                <span>Energy</span>
                                 <span>Value</span>
                                 <span></span>
                             </div>
