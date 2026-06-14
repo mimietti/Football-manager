@@ -531,7 +531,7 @@
             setScore(h, a) { this.hg=h; this.ag=a; }
 
             _shotOrigin(attackingRight) {
-                return {px:.75+Math.random()*0.06, py:.40+Math.random()*0.20};
+                return {px:.78+Math.random()*0.04, py:.40+Math.random()*0.20};
             }
 
             goal(humanScored) {
@@ -543,8 +543,8 @@
                 this.bpx=origin.px; this.bpy=origin.py;
                 this.shotStart={px:this.bpx, py:this.bpy};
                 this.shotTraceTick=180;
-                this.btpx=0.84+Math.random()*0.035;
-                this.btpy=0.38+Math.random()*0.24;
+                this.btpx=0.94+Math.random()*0.025;
+                this.btpy=0.40+Math.random()*0.20;
                 this.shotActive=true; this._pending="goal";
             }
 
@@ -557,10 +557,10 @@
                 this.shotStart={px:this.bpx, py:this.bpy};
                 this.shotTraceTick=180;
                 const r=Math.random();
-                this.btpx=0.90;
-                if(r<0.34) this.btpy=0.24+Math.random()*0.10;         // just above top post
-                else if(r<0.67) this.btpy=0.68+Math.random()*0.10;   // just below bottom post
-                else { this.btpx=0.92; this.btpy=0.08+Math.random()*0.12; } // over bar
+                this.btpx=0.98;
+                if(r<0.34) this.btpy=0.24+Math.random()*0.08;         // wide of the near post
+                else if(r<0.67) this.btpy=0.68+Math.random()*0.08;   // wide of the far post
+                else { this.btpx=0.96; this.btpy=0.12+Math.random()*0.08; } // over bar
                 this.shotActive=true; this._pending="nogoal";
             }
 
@@ -572,8 +572,8 @@
                 this.bpx=origin.px; this.bpy=origin.py;
                 this.shotStart={px:this.bpx, py:this.bpy};
                 this.shotTraceTick=180;
-                this.btpx=0.80+Math.random()*0.04;
-                this.btpy=0.37+Math.random()*0.26;
+                this.btpx=0.91+Math.random()*0.035;
+                this.btpy=0.38+Math.random()*0.24;
                 this.keeperSave={px:this.btpx, py:this.btpy, human:!humanAttacking};
                 this.keeperTick=0;
                 this.shotActive=true; this._pending="saved";
@@ -751,23 +751,44 @@
                 g.stroke();
             }
 
+            _attackCurve(points) {
+                const g=this.g;
+                if(points.length<2) return;
+                const first=this._attackPoint(points[0][0],points[0][1]);
+                g.beginPath();
+                g.moveTo(first.x,first.y);
+                for(let i=1;i<points.length;i+=2) {
+                    const c=this._attackPoint(points[i][0],points[i][1]);
+                    const end=points[i+1] ? this._attackPoint(points[i+1][0],points[i+1][1]) : c;
+                    g.quadraticCurveTo(c.x,c.y,end.x,end.y);
+                }
+                g.stroke();
+            }
+
             _attackGoal() {
                 const g=this.g;
                 const P=(x,y)=>this._attackPoint(x,y);
-                const a=P(.64,.34), b=P(.64,.58);
-                const c=P(.72,.28), d=P(.82,.36), e=P(.82,.64), f=P(.72,.72);
+                const a=P(.77,.36), b=P(.88,.40), c=P(.88,.60), d=P(.77,.64);
+                const e=P(.88,.29), f=P(.98,.35), h=P(.98,.68), i=P(.88,.75);
                 g.save();
                 g.strokeStyle="#ffff00";
                 g.lineWidth=3.2;
+                g.lineJoin="round";
+                g.lineCap="round";
                 g.beginPath();
-                g.moveTo(a.x,a.y); g.lineTo(b.x,b.y);          // front post line
-                g.moveTo(a.x,a.y); g.lineTo(c.x,c.y);          // roof left
-                g.moveTo(c.x,c.y); g.lineTo(d.x,d.y);          // roof back
-                g.moveTo(d.x,d.y); g.lineTo(e.x,e.y);          // back post
-                g.moveTo(b.x,b.y); g.lineTo(f.x,f.y);          // floor left
-                g.moveTo(f.x,f.y); g.lineTo(e.x,e.y);          // floor back
-                g.moveTo(c.x,c.y); g.lineTo(f.x,f.y);          // side net
-                g.moveTo(d.x,d.y); g.lineTo(b.x,b.y);          // diagonal net
+                // Front mouth.
+                g.moveTo(a.x,a.y); g.lineTo(b.x,b.y); g.lineTo(c.x,c.y); g.lineTo(d.x,d.y); g.closePath();
+                // Back frame.
+                g.moveTo(e.x,e.y); g.lineTo(f.x,f.y); g.lineTo(h.x,h.y); g.lineTo(i.x,i.y); g.closePath();
+                // Depth lines.
+                g.moveTo(a.x,a.y); g.lineTo(e.x,e.y);
+                g.moveTo(b.x,b.y); g.lineTo(f.x,f.y);
+                g.moveTo(c.x,c.y); g.lineTo(h.x,h.y);
+                g.moveTo(d.x,d.y); g.lineTo(i.x,i.y);
+                // A few net ribs, without crossing braces.
+                const r1=P(.82,.38), r2=P(.93,.32), r3=P(.82,.62), r4=P(.93,.71);
+                g.moveTo(r1.x,r1.y); g.lineTo(r2.x,r2.y);
+                g.moveTo(r3.x,r3.y); g.lineTo(r4.x,r4.y);
                 g.stroke();
                 g.restore();
             }
@@ -797,15 +818,16 @@
             _drawAttack() {
                 const {g,W,H}=this;
                 g.fillStyle="#00bb00"; g.fillRect(0,0,W,H);
-                g.strokeStyle="#ffff00"; g.lineWidth=4;
-                // Broadcast close-up of the attacking third: fewer lines, clearer box.
-                this._attackLine([[.10,.92],[.38,.20],[.92,.16]]);
-                this._attackLine([[.10,.92],[.54,.90],[.92,.82]]);
-                this._attackLine([[.38,.20],[.54,.90]]);
-                this._attackLine([[.92,.16],[.92,.82]]);
-                this._attackLine([[.49,.36],[.77,.34],[.78,.65],[.53,.70],[.49,.36]]);
-                this._attackLine([[.20,.56],[.27,.64]]);
-                this._attackLine([[.20,.56],[.19,.48]]);
+                g.strokeStyle="#ffff00";
+                g.lineWidth=3.4;
+                g.lineJoin="round";
+                g.lineCap="round";
+                // Fixed attacking-third camera. The lines are deliberately simple:
+                // touchline, penalty area, six-yard box, arc, and one clear 3D goal.
+                this._attackLine([[.04,.90],[.27,.12],[.88,.10],[.88,.84],[.04,.90]]);
+                this._attackLine([[.52,.30],[.88,.25],[.88,.75],[.52,.70],[.52,.30]]);
+                this._attackLine([[.67,.41],[.88,.38],[.88,.62],[.67,.59],[.67,.41]]);
+                this._attackCurve([[.25,.46],[.31,.56],[.25,.66]]);
                 this._attackGoal();
                 this._attackShotArc();
                 const bs=this._ap(this.bpx,this.bpy);
