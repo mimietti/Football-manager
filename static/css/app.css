@@ -18,7 +18,7 @@ body {
     font-family: "Trebuchet MS", "Segoe UI", sans-serif;
 }
 .shell {
-    width: min(1460px, calc(100% - 16px));
+    width: min(1660px, calc(100% - 16px));
     margin: 0 auto;
     padding: 8px 0 16px;
 }
@@ -208,13 +208,16 @@ button:disabled {
     border: 1px solid var(--line);
     border-radius: 8px;
     background:
-        linear-gradient(90deg, rgba(0,0,0,0.18), transparent 18% 82%, rgba(0,0,0,0.18)),
-        repeating-linear-gradient(90deg, #23683d 0 72px, #1a5733 72px 144px);
+        linear-gradient(180deg, rgba(255,255,255,0.18) 0 28px, transparent 28px),
+        repeating-linear-gradient(0deg, rgba(255,255,255,0.035) 0 2px, transparent 2px 4px),
+        #19d934;
 }
 .pitch-lines {
     position: absolute;
-    inset: 22px;
-    border: 3px solid rgba(255,255,255,0.42);
+    inset: 50px 9% 22px;
+    border: 3px solid #fff065;
+    transform: skewX(19deg);
+    transform-origin: center;
 }
 .pitch-lines::before {
     content: "";
@@ -222,29 +225,101 @@ button:disabled {
     top: 0;
     bottom: 0;
     left: 50%;
-    border-left: 3px solid rgba(255,255,255,0.42);
+    border-left: 3px solid #fff065;
 }
 .pitch-lines::after {
     content: "";
     position: absolute;
-    width: 86px;
-    height: 86px;
-    top: 50%;
-    left: 50%;
-    border: 3px solid rgba(255,255,255,0.42);
-    border-radius: 50%;
+    width: 22%;
+    height: 44%;
+    top: 6%;
+    right: 6%;
+    border: 3px solid #fff065;
+    border-left: 0;
+    border-radius: 0;
     transform: translate(-50%, -50%);
+}
+.visual-banner {
+    position: absolute;
+    z-index: 2;
+    top: 8px;
+    left: 50%;
+    transform: translateX(-50%);
+    min-width: 190px;
+    padding: 3px 14px 2px;
+    background: #f7f4e9;
+    color: #151515;
+    font-family: "Courier New", monospace;
+    font-size: 30px;
+    font-weight: 900;
+    line-height: 1;
+    text-align: center;
+    text-transform: uppercase;
+}
+.visual-scoreline {
+    position: absolute;
+    z-index: 2;
+    top: 39px;
+    left: 50%;
+    transform: translateX(-50%);
+    width: min(760px, 86%);
+    padding: 2px 10px;
+    background: #f7f4e9;
+    color: #d82222;
+    font-family: "Courier New", monospace;
+    font-size: 23px;
+    font-weight: 900;
+    line-height: 1;
+    text-align: center;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+.pixel-player,
+.pixel-ball {
+    position: absolute;
+    z-index: 1;
+    display: block;
+    width: 10px;
+    height: 28px;
+    background: #f7f4e9;
+    box-shadow:
+        0 10px 0 -2px currentColor,
+        -7px 13px 0 -4px currentColor,
+        7px 13px 0 -4px currentColor;
+    color: currentColor;
+}
+.pixel-player.away {
+    background: #0b0d0d;
+    color: #0b0d0d;
+}
+.pixel-player.home {
+    background: #f7f4e9;
+    color: #f7f4e9;
+}
+.pixel-player.p1 { left: 34%; top: 46%; }
+.pixel-player.p2 { left: 46%; top: 58%; }
+.pixel-player.p3 { right: 34%; top: 42%; }
+.pixel-player.p4 { right: 26%; top: 62%; }
+.pixel-ball {
+    width: 8px;
+    height: 8px;
+    left: 54%;
+    top: 54%;
+    background: #0b45d9;
+    box-shadow: none;
 }
 .visual-fixture {
     position: absolute;
     left: 24px;
     right: 24px;
-    bottom: 20px;
-    color: #fff8c7;
+    bottom: 14px;
+    color: #101411;
+    font-family: "Courier New", monospace;
     font-size: 22px;
     font-weight: 900;
     text-align: center;
-    text-shadow: 0 2px 10px rgba(0,0,0,0.55);
+    text-shadow: 1px 1px 0 #fff8c7;
 }
 .button-row {
     display: flex;
@@ -317,7 +392,7 @@ select {
     gap: 6px;
 }
 .squad-grid {
-    grid-template-columns: repeat(3, minmax(0, 1fr));
+    grid-template-columns: repeat(auto-fit, minmax(360px, 1fr));
     align-items: start;
 }
 .squad-column {
@@ -327,20 +402,20 @@ select {
 .squad-column h3 {
     margin: 0;
     color: var(--accent);
-    font-size: 15px;
+    font-size: 17px;
     letter-spacing: 0.08em;
     text-transform: uppercase;
 }
 .squad-table-head {
     display: grid;
-    grid-template-columns: minmax(96px, 1fr) 34px 56px 78px auto;
+    grid-template-columns: minmax(116px, 1fr) 42px 64px 92px auto;
     gap: 6px;
     align-items: center;
     padding: 4px 8px;
     background: var(--accent);
     color: #141207;
     font-family: "Courier New", monospace;
-    font-size: 15px;
+    font-size: 16px;
     font-weight: 900;
     text-transform: uppercase;
 }
@@ -353,7 +428,7 @@ select {
 }
 .player-row {
     display: grid;
-    grid-template-columns: minmax(96px, 1fr) 34px 56px 78px auto;
+    grid-template-columns: minmax(116px, 1fr) 42px 64px 92px auto;
     gap: 6px;
     align-items: center;
     padding: 7px 8px;
@@ -361,8 +436,8 @@ select {
     border-radius: 4px;
     background: rgba(0,0,0,0.16);
     font-family: "Courier New", monospace;
-    font-size: 15px;
-    line-height: 1.15;
+    font-size: 16px;
+    line-height: 1.18;
 }
 .player-row.active-player {
     border-color: rgba(117,212,131,0.42);
@@ -379,7 +454,7 @@ select {
 .player-row span {
     margin-top: 0;
     color: var(--muted);
-    font-size: 15px;
+    font-size: 16px;
 }
 .energy-value {
     display: inline;
@@ -396,8 +471,8 @@ select {
     justify-content: flex-end;
 }
 .player-actions button {
-    padding: 6px 8px;
-    font-size: 12px;
+    padding: 7px 9px;
+    font-size: 13px;
 }
 table {
     width: 100%;
@@ -431,21 +506,31 @@ tr.player {
 }
 .match-finance {
     margin-top: 14px;
-    padding-top: 12px;
-    border-top: 1px solid rgba(255,255,255,0.08);
-    font-size: 13px;
-    color: var(--muted);
+    padding: 14px 18px;
+    border-top: 0;
+    border-radius: 4px;
+    background:
+        repeating-linear-gradient(0deg, rgba(0,0,0,0.055) 0 2px, transparent 2px 4px),
+        #cfd3c6;
+    color: #d82222;
+    font-family: "Courier New", monospace;
+    font-size: 24px;
+    font-weight: 900;
+    line-height: 1.18;
 }
 .match-finance h4 {
-    margin: 6px 0 2px;
-    font-size: 11px;
-    font-weight: 700;
+    display: inline-block;
+    margin: 0 0 12px;
+    padding: 0 8px;
+    background: #d82222;
+    color: #f7f15b;
+    font-size: 24px;
+    font-weight: 900;
     text-transform: uppercase;
-    letter-spacing: 0.07em;
-    color: rgba(245,246,232,0.45);
+    letter-spacing: 0.04em;
 }
 .match-finance p {
-    margin: 2px 0;
+    margin: 4px 0;
 }
 .latest-match li.event-goal {
     color: var(--green);
@@ -520,40 +605,77 @@ em.inj {
 }
 .pre-match-panel {
     margin-top: 8px;
-    padding: 12px;
-    border: 1px solid var(--line);
+    padding: 14px;
+    border: 1px solid rgba(245,246,232,0.26);
     border-radius: 8px;
-    background: var(--panel);
+    background:
+        repeating-linear-gradient(0deg, rgba(0,0,0,0.055) 0 2px, transparent 2px 4px),
+        #cfd3c6;
+    color: #151515;
+}
+.pre-match-panel h2 {
+    color: #d82222;
+    font-family: "Courier New", monospace;
+    font-size: 24px;
+    text-align: center;
+    letter-spacing: 0.08em;
 }
 .prematch-table {
-    width: min(680px, 100%);
+    width: min(860px, 100%);
     border-collapse: collapse;
-    margin: 4px auto 0;
-    font-size: 18px;
-    font-family: "Trebuchet MS", "Segoe UI", sans-serif;
+    margin: 2px auto 0;
+    font-family: "Courier New", monospace;
+    font-size: clamp(22px, 2.2vw, 34px);
+    line-height: 1.04;
 }
 .prematch-table th,
 .prematch-table td {
-    padding: 8px 12px;
-    border-bottom: 1px solid rgba(255,255,255,0.06);
+    padding: 1px 16px;
+    border-bottom: 0;
     text-align: right;
+    font-weight: 900;
 }
 .prematch-table th:first-child,
 .prematch-table td:first-child { text-align: left; }
-.prematch-table th.pm-human { color: var(--green); }
-.prematch-table th.pm-ai { color: #ff8a65; }
-.pm-label { color: var(--muted); }
-.pm-human { color: var(--green); }
-.pm-ai { color: #ff8a65; }
+.prematch-table th.pm-human,
+.prematch-table th.pm-ai { color: #d82222; }
+.pm-label { color: #151515; }
+.pm-human { color: #1748c7; }
+.pm-ai { color: #d82222; }
 .pm-stronger { font-weight: 900; }
-.pm-weaker { opacity: 0.55; }
+.pm-weaker { opacity: 0.7; }
 .pm-picked {
-    width: min(680px, 100%);
-    margin: 12px auto 0;
-    font-size: 16px;
-    font-weight: 700;
-    color: var(--accent);
+    width: min(860px, 100%);
+    margin: 4px auto 0;
+    font-family: "Courier New", monospace;
+    font-size: clamp(20px, 2vw, 30px);
+    font-weight: 900;
+    color: #f7f4e9;
     letter-spacing: 0.04em;
+}
+.pm-picked span {
+    display: inline-block;
+    padding: 0 10px;
+    background: #111;
+}
+.pre-match-panel .match-panel {
+    width: min(860px, 100%);
+    margin: 18px auto 0;
+    padding: 0;
+    border: 0;
+    background: transparent;
+    color: #151515;
+}
+.pre-match-panel .round-label {
+    color: #1748c7;
+    font-family: "Courier New", monospace;
+    font-size: 20px;
+}
+.pre-match-panel #editSquad,
+.pre-match-panel #endSeason {
+    color: #151515;
+    background: #f7f15b;
+    border-color: #d2ca20;
 }
 .other-matches-title {
     margin: 16px 0 8px;

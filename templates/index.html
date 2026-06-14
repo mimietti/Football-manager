@@ -85,7 +85,14 @@
         <!-- Match visualisation -->
         <section id="matchVisual" class="match-visual" style="display:none">
             <div class="scoreboard-still">
+                <div id="visualBanner" class="visual-banner">KICK OFF</div>
+                <div id="visualScore" class="visual-scoreline"></div>
                 <div class="pitch-lines"></div>
+                <span class="pixel-player home p1"></span>
+                <span class="pixel-player home p2"></span>
+                <span class="pixel-player away p3"></span>
+                <span class="pixel-player away p4"></span>
+                <span class="pixel-ball"></span>
                 <div id="visualFixture" class="visual-fixture"></div>
             </div>
         </section>
@@ -254,7 +261,7 @@
                         </tr>`).join("")}
                     </tbody>
                 </table>
-                <div class="pm-picked">PLAYERS PICKED = ${pm.human.lineup_size}</div>`;
+                <div class="pm-picked"><span>PLAYERS PICKED=${pm.human.lineup_size}</span></div>`;
         }
 
         function renderOtherMatches(matches, division) {
@@ -291,6 +298,7 @@
                     html += `<p>${esc(f)}</p>`;
                 }
             });
+            html = html.replace("<h4>Weekly costs</h4>", "<h4>****Weekly Bills****</h4>");
             return html + "</div>";
         }
 
@@ -300,6 +308,10 @@
 
             for (const m of matches) {
                 let curHome = 0, curAway = 0;
+                const visualBanner = document.getElementById("visualBanner");
+                const visualScore = document.getElementById("visualScore");
+                if (visualBanner) visualBanner.textContent = "KICK OFF";
+                if (visualScore) visualScore.textContent = `${m.home} 0 - 0 ${m.away}`;
 
                 const article = document.createElement("article");
                 article.className = "report";
@@ -334,6 +346,17 @@
                         }
                     }
 
+                    if (l.startsWith("GOAL")) {
+                        if (visualBanner) visualBanner.textContent = "GOAL!";
+                        if (visualScore) visualScore.textContent = `${m.home} ${curHome} - ${curAway} ${m.away}`;
+                        if (visualScore) visualScore.textContent = scoreEl.textContent.replace(" â€“ ", " - ");
+                        if (visualScore) visualScore.textContent = `${m.home} ${curHome} - ${curAway} ${m.away}`;
+                    } else if (l.includes("is saved") || l.includes("shoots wide") || l.includes("shoot wide")) {
+                        if (visualBanner) visualBanner.textContent = "NO GOAL!";
+                    } else if (visualBanner && !l.startsWith("Final score:")) {
+                        visualBanner.textContent = "CHANCE";
+                    }
+
                     // Update score from "Highlights:" line (retro mode): "Highlights: York City 2, Blackpool 0."
                     if (l.startsWith("Highlights:")) {
                         l.replace(/^Highlights:\s*/, "").replace(/\.$/, "").split(", ").forEach(part => {
@@ -348,10 +371,16 @@
                         scoreEl.textContent = `${m.home} ${curHome} – ${curAway} ${m.away}`;
                     }
 
+                    if (l.startsWith("Highlights:") && visualScore) {
+                        visualScore.textContent = `${m.home} ${curHome} - ${curAway} ${m.away}`;
+                    }
+
                     // On "Final score:" confirm totals match and add a brief pause
                     if (isFinal) {
                         curHome = m.home_goals;
                         curAway = m.away_goals;
+                        if (visualScore) visualScore.textContent = `${m.home} ${curHome} - ${curAway} ${m.away}`;
+                        if (visualBanner) visualBanner.textContent = "FULL TIME";
                         scoreEl.textContent = `${m.home} ${curHome} – ${curAway} ${m.away}`;
                         await delay(800);
                     } else {
@@ -418,6 +447,13 @@
             }
             document.getElementById("nextFixture").innerHTML = nfText;
             document.getElementById("visualFixture").textContent = nfText.replace(/<[^>]*>/g, " ");
+            const visualScore = document.getElementById("visualScore");
+            if (visualScore && nf?.opponent) {
+                const humanName = state.human_teams?.[0]?.name ?? "";
+                visualScore.textContent = `${humanName} 0 - 0 ${nf.opponent}`;
+            }
+            const visualBanner = document.getElementById("visualBanner");
+            if (visualBanner && !animating) visualBanner.textContent = "KICK OFF";
 
             // Round label
             document.getElementById("roundLabel").textContent = state.season_over
