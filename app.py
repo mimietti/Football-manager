@@ -7,7 +7,7 @@ import os
 import pickle
 import base64
 
-from flask import Flask, render_template, request, redirect, url_for
+from flask import Flask, render_template, request, redirect, url_for, session
 from flask_socketio import SocketIO, emit, join_room
 from flask_login import (
     LoginManager, login_user, logout_user,
@@ -77,7 +77,15 @@ def _broadcast(uid: int, season: SeasonState) -> None:
 
 
 def _uid() -> int | None:
-    return current_user.id if current_user.is_authenticated else None
+    # Flask-Login stores user_id in session['_user_id']; more reliable than
+    # current_user proxy inside SocketIO handlers under gevent.
+    uid = session.get("_user_id")
+    if uid is None:
+        return None
+    try:
+        return int(uid)
+    except (TypeError, ValueError):
+        return None
 
 
 # ── HTTP routes ───────────────────────────────────────────────────────────────
