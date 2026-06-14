@@ -542,7 +542,7 @@
                 this.bpx=origin.px; this.bpy=origin.py;
                 this.shotStart={px:this.bpx, py:this.bpy};
                 this.shotTraceTick=180;
-                this.btpx=humanScored?0.985+Math.random()*0.02:0.015-Math.random()*0.02;
+                this.btpx=humanScored?0.88+Math.random()*0.035:0.12-Math.random()*0.035;
                 this.btpy=0.38+Math.random()*0.24;
                 this.shotActive=true; this._pending="goal";
             }
@@ -556,7 +556,7 @@
                 this.shotStart={px:this.bpx, py:this.bpy};
                 this.shotTraceTick=180;
                 const r=Math.random();
-                this.btpx=humanMissed?0.97:0.03;
+                this.btpx=humanMissed?0.93:0.07;
                 if(r<0.34) this.btpy=0.24+Math.random()*0.10;         // just above top post
                 else if(r<0.67) this.btpy=0.68+Math.random()*0.10;   // just below bottom post
                 else { this.btpx=humanMissed?0.96:0.04; this.btpy=0.08+Math.random()*0.12; } // over bar
@@ -571,7 +571,7 @@
                 this.bpx=origin.px; this.bpy=origin.py;
                 this.shotStart={px:this.bpx, py:this.bpy};
                 this.shotTraceTick=180;
-                this.btpx=humanAttacking?0.91+Math.random()*0.05:0.04+Math.random()*0.05;
+                this.btpx=humanAttacking?0.84+Math.random()*0.04:0.12-Math.random()*0.04;
                 this.btpy=0.37+Math.random()*0.26;
                 this.keeperSave={px:this.btpx, py:this.btpy, h:!humanAttacking};
                 this.keeperTick=0;
@@ -724,8 +724,107 @@
                 g.restore();
             }
 
+            _ap(px, py) {
+                const right=this._vs!=="attack-ai";
+                const W=this.W, H=this.H;
+                const xNorm=right
+                    ? (px-.64)/.38
+                    : ((1-px)-.64)/.38;
+                const x=Math.max(-.08,Math.min(1.08,xNorm))*W;
+                const y=(.08+py*.84)*H;
+                return {x,y};
+            }
+
+            _attackPoint(x, y) {
+                const W=this.W,H=this.H;
+                return {x:x*W,y:y*H};
+            }
+
+            _attackLine(points) {
+                const g=this.g;
+                g.beginPath();
+                points.forEach(([x,y],i)=>{
+                    const p=this._attackPoint(x,y);
+                    i?g.lineTo(p.x,p.y):g.moveTo(p.x,p.y);
+                });
+                g.stroke();
+            }
+
+            _attackGoal() {
+                const g=this.g;
+                const P=(x,y)=>this._attackPoint(x,y);
+                const a=P(.53,.26), b=P(.53,.58);
+                const c=P(.66,.18), d=P(.70,.34), e=P(.73,.62), f=P(.60,.70);
+                g.save();
+                g.strokeStyle="#ffff00";
+                g.lineWidth=4;
+                g.beginPath();
+                g.moveTo(a.x,a.y); g.lineTo(b.x,b.y);          // mouth
+                g.moveTo(a.x,a.y); g.lineTo(c.x,c.y);          // roof front
+                g.moveTo(c.x,c.y); g.lineTo(d.x,d.y);          // roof side
+                g.moveTo(d.x,d.y); g.lineTo(e.x,e.y);          // back post
+                g.moveTo(b.x,b.y); g.lineTo(f.x,f.y);          // floor front
+                g.moveTo(f.x,f.y); g.lineTo(e.x,e.y);          // floor back
+                g.moveTo(c.x,c.y); g.lineTo(f.x,f.y);          // near side net
+                g.moveTo(d.x,d.y); g.lineTo(b.x,b.y);          // cross brace
+                g.stroke();
+                g.restore();
+            }
+
+            _attackShotArc() {
+                if(!this.shotStart || (!this.shotActive && this.shotTraceTick<=0)) return;
+                const g=this.g;
+                const sx=this.shotStart.px, sy=this.shotStart.py;
+                const ex=this.shotActive?this.bpx:this.btpx, ey=this.shotActive?this.bpy:this.btpy;
+                const dx=ex-sx, dy=ey-sy;
+                g.save();
+                g.strokeStyle="#f7f15b";
+                g.lineWidth=4;
+                g.setLineDash([12,10]);
+                g.beginPath();
+                for(let i=0;i<=24;i++){
+                    const t=i/24;
+                    const px=sx+dx*t;
+                    const py=sy+dy*t + Math.sin(Math.PI*t)*.035*(dx>=0?-1:1);
+                    const p=this._ap(px,py);
+                    i?g.lineTo(p.x,p.y):g.moveTo(p.x,p.y);
+                }
+                g.stroke();
+                g.restore();
+            }
+
+            _drawAttack() {
+                const {g,W,H}=this;
+                g.fillStyle="#00bb00"; g.fillRect(0,0,W,H);
+                g.strokeStyle="#ffff00"; g.lineWidth=4;
+                // Penalty-area close-up copied from the BASIC-style composition.
+                this._attackLine([[.18,.98],[.44,.15],[.92,.10]]);
+                this._attackLine([[.44,.15],[.54,.72],[.30,.72]]);
+                this._attackLine([[.54,.72],[.92,.66]]);
+                this._attackLine([[.84,.11],[.89,.66]]);
+                this._attackLine([[.15,.55],[.26,.63]]);
+                this._attackLine([[.15,.55],[.14,.45]]);
+                this._attackGoal();
+                this._attackShotArc();
+                const bs=this._ap(this.bpx,this.bpy);
+                this._ball(bs.x,bs.y,6);
+                for(const p of this.pl){
+                    const s=this._ap(p.px,p.py);
+                    this._fig(s.x,s.y,p.h,(Math.abs(p.px-p.tpx)+Math.abs(p.py-p.tpy))>0.015);
+                }
+                if(this.keeperSave && (this.shotActive || this.keeperTick>0)) {
+                    const ks=this._ap(this.keeperSave.px,this.keeperSave.py);
+                    this._keeper(ks.x,ks.y,this.keeperSave.h);
+                }
+                this._updateOverlay();
+            }
+
             _draw() {
                 const {g,W,H}=this;
+                if(this._vs==="attack-human"||this._vs==="attack-ai") {
+                    this._drawAttack();
+                    return;
+                }
                 g.fillStyle="#00bb00"; g.fillRect(0,0,W,H);
                 g.save();
                 // Save identity, apply zoom for pitch drawing
