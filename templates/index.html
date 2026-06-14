@@ -85,14 +85,7 @@
         <!-- Match visualisation -->
         <section id="matchVisual" class="match-visual" style="display:none">
             <div class="scoreboard-still">
-                <div id="visualBanner" class="visual-banner">KICK OFF</div>
-                <div id="visualScore" class="visual-scoreline"></div>
-                <div class="pitch-lines"></div>
-                <span class="pixel-player home p1"></span>
-                <span class="pixel-player home p2"></span>
-                <span class="pixel-player away p3"></span>
-                <span class="pixel-player away p4"></span>
-                <span class="pixel-ball"></span>
+                <canvas id="pitchCanvas" class="pitch-canvas"></canvas>
                 <div id="visualFixture" class="visual-fixture"></div>
             </div>
         </section>
@@ -302,106 +295,365 @@
             return html + "</div>";
         }
 
+        // Lines skipped during animation — filler with no match value
+        function isBoringLine(l) {
+            return l.endsWith(“ defend.”) || l.startsWith(“Midfield battle”);
+        }
+
         async function animateMatchReport(matches) {
-            const container = document.getElementById("latestMatch");
-            container.innerHTML = "";
+            const container = document.getElementById(“latestMatch”);
+            container.innerHTML = “”;
 
             for (const m of matches) {
                 let curHome = 0, curAway = 0;
-                const visualBanner = document.getElementById("visualBanner");
-                const visualScore = document.getElementById("visualScore");
-                if (visualBanner) visualBanner.textContent = "KICK OFF";
-                if (visualScore) visualScore.textContent = `${m.home} 0 - 0 ${m.away}`;
+                const humanName = (state.human_teams || [])[0]?.name ?? “”;
+                const humanIsHome = m.home === humanName;
+                const viz = ensureViz();
+                viz.reset(m.home, m.away);
 
-                const article = document.createElement("article");
-                article.className = "report";
+                const article = document.createElement(“article”);
+                article.className = “report”;
                 container.appendChild(article);
 
-                // Score starts at 0–0, visible immediately
-                const scoreEl = document.createElement("div");
-                scoreEl.className = "score";
+                const scoreEl = document.createElement(“div”);
+                scoreEl.className = “score”;
                 scoreEl.textContent = `${m.home} 0 – 0 ${m.away}`;
                 article.appendChild(scoreEl);
 
-                const ul = document.createElement("ul");
+                const ul = document.createElement(“ul”);
                 article.appendChild(ul);
 
                 const financeLines = [];
 
                 for (const line of m.report) {
-                    const l = String(line ?? "");
+                    const l = String(line ?? “”);
 
-                    // Collect finance lines separately — don't animate them
                     if (isFinanceLine(l)) { financeLines.push(l); continue; }
+                    if (isBoringLine(l)) continue;
 
-                    const isFinal = l.startsWith("Final score:");
+                    const isFinal  = l.startsWith(“Final score:”);
+                    const isGoal   = l.startsWith(“GOAL”);
+                    const isMiss   = l.includes(“ shoots wide”) || l.includes(“ shoot wide”);
+                    const isSaved  = l.includes(“ is saved”);
+                    const isIntercept = l.includes(“ intercepts”);
+                    const prevHome = curHome, prevAway = curAway;
 
-                    // Update live score from GOAL lines (modern mode): "GOAL — Name! (1–0)"
-                    if (l.startsWith("GOAL")) {
+                    if (isGoal) {
                         const sg = l.match(/\((\d+)[–\-](\d+)\)/);
                         if (sg) {
                             curHome = parseInt(sg[1]);
                             curAway = parseInt(sg[2]);
                             scoreEl.textContent = `${m.home} ${curHome} – ${curAway} ${m.away}`;
                         }
+                        const humanScored = humanIsHome ? curHome > prevHome : curAway > prevAway;
+                        viz.setScore(curHome, curAway);
+                        viz.goal(humanScored);
+                    } else if (isMiss) {
+                        // Attacker name precedes “shoots wide”
+                        const humanMissed = humanName && l.startsWith(humanName);
+                        viz.setState(humanMissed ? “attack-human” : “attack-ai”);
+                        viz.noGoal(humanMissed);
+                    } else if (isSaved) {
+                        // “X is saved” → X was the attacker
+                        const humanAttacking = humanName && l.startsWith(humanName);
+                        viz.setState(humanAttacking ? “attack-human” : “attack-ai”);
+                        viz.saved(humanAttacking);
+                    } else if (isIntercept) {
+                        // “Y intercepts” → Y is the defender, so other team was attacking
+                        const humanDefends = humanName && l.startsWith(humanName);
+                        viz.setState(humanDefends ? “attack-ai” : “attack-human”);
+                        viz.saved(humanDefends);
+                    } else if (isFinal) {
+                        curHome = m.home_goals;
+                        curAway = m.away_goals;
+                        scoreEl.textContent = `${m.home} ${curHome} – ${curAway} ${m.away}`;
+                        viz.setState(“full-time”);
+                        viz.clearBanner();
+                        await delay(600);
+                    } else {
+                        // Pressure / pressure lines begin with the attacking team name
+                        const humanAttacking = humanName && l.startsWith(humanName);
+                        viz.setState(humanAttacking ? “attack-human” : “attack-ai”);
                     }
 
-                    if (l.startsWith("GOAL")) {
-                        if (visualBanner) visualBanner.textContent = "GOAL!";
-                        if (visualScore) visualScore.textContent = `${m.home} ${curHome} - ${curAway} ${m.away}`;
-                        if (visualScore) visualScore.textContent = scoreEl.textContent.replace(" â€“ ", " - ");
-                        if (visualScore) visualScore.textContent = `${m.home} ${curHome} - ${curAway} ${m.away}`;
-                    } else if (l.includes("is saved") || l.includes("shoots wide") || l.includes("shoot wide")) {
-                        if (visualBanner) visualBanner.textContent = "NO GOAL!";
-                    } else if (visualBanner && !l.startsWith("Final score:")) {
-                        visualBanner.textContent = "CHANCE";
-                    }
-
-                    // Update score from "Highlights:" line (retro mode): "Highlights: York City 2, Blackpool 0."
-                    if (l.startsWith("Highlights:")) {
-                        l.replace(/^Highlights:\s*/, "").replace(/\.$/, "").split(", ").forEach(part => {
-                            const sp = part.lastIndexOf(" ");
+                    if (l.startsWith(“Highlights:”)) {
+                        l.replace(/^Highlights:\s*/, “”).replace(/\.$/, “”).split(“, “).forEach(part => {
+                            const sp = part.lastIndexOf(“ “);
                             const name = part.substring(0, sp);
-                            const g = parseInt(part.substring(sp + 1));
-                            if (!isNaN(g)) {
-                                if (name === m.home) curHome = g;
-                                else if (name === m.away) curAway = g;
+                            const gn = parseInt(part.substring(sp + 1));
+                            if (!isNaN(gn)) {
+                                if (name === m.home) curHome = gn;
+                                else if (name === m.away) curAway = gn;
                             }
                         });
                         scoreEl.textContent = `${m.home} ${curHome} – ${curAway} ${m.away}`;
                     }
 
-                    if (l.startsWith("Highlights:") && visualScore) {
-                        visualScore.textContent = `${m.home} ${curHome} - ${curAway} ${m.away}`;
-                    }
-
-                    // On "Final score:" confirm totals match and add a brief pause
-                    if (isFinal) {
-                        curHome = m.home_goals;
-                        curAway = m.away_goals;
-                        if (visualScore) visualScore.textContent = `${m.home} ${curHome} - ${curAway} ${m.away}`;
-                        if (visualBanner) visualBanner.textContent = "FULL TIME";
-                        scoreEl.textContent = `${m.home} ${curHome} – ${curAway} ${m.away}`;
-                        await delay(800);
-                    } else {
-                        await delay(500);
-                    }
-
-                    const li = document.createElement("li");
+                    const li = document.createElement(“li”);
                     const cls = reportLineClass(l);
                     if (cls) li.className = cls;
                     li.textContent = l;
                     ul.appendChild(li);
-                    li.scrollIntoView({ behavior: "smooth", block: "nearest" });
+                    li.scrollIntoView({ behavior: “smooth”, block: “nearest” });
+
+                    await delay(isGoal ? 1800 : isMiss || isSaved || isIntercept ? 1400 : isFinal ? 900 : 900);
                 }
 
-                // Finance summary below events
                 if (financeLines.length) {
-                    article.insertAdjacentHTML("beforeend", financeHtml(financeLines));
+                    article.insertAdjacentHTML(“beforeend”, financeHtml(financeLines));
                 }
             }
 
-            document.getElementById("playRound").disabled = state?.season_over ?? false;
+            document.getElementById(“playRound”).disabled = state?.season_over ?? false;
+        }
+
+        // ── Canvas pitch visualiser ───────────────────────────────────────────
+        class MatchVisualizer {
+            constructor(id) {
+                this.cv = document.getElementById(id);
+                if (!this.cv) return;
+                this.g = this.cv.getContext("2d");
+                this.W = 640; this.H = 288;
+                this.cv.width = this.W; this.cv.height = this.H;
+                this.homeTeam = ""; this.awayTeam = "";
+                this.hg = 0; this.ag = 0;
+                this.phase = 0;
+                this.goalTick = 0; this.goalHuman = true;
+                // Players: 2 home (white), 4 away (black)
+                this.pl = [
+                    {x:.12,y:.78,tx:.12,ty:.78,h:true},  // home GK area
+                    {x:.40,y:.48,tx:.40,ty:.48,h:true},  // home mid
+                    {x:.60,y:.30,tx:.60,ty:.30,h:false},
+                    {x:.67,y:.50,tx:.67,ty:.50,h:false},
+                    {x:.62,y:.68,tx:.62,ty:.68,h:false},
+                    {x:.74,y:.42,tx:.74,ty:.42,h:false},
+                ];
+                this.bx=.5; this.by=.5; this.btx=.5; this.bty=.5;
+                this.bannType = null; this.bannTick = 0; this.bannHuman = true;
+                this._raf = null;
+                this._loop = this._loop.bind(this);
+                this._raf = requestAnimationFrame(this._loop);
+            }
+
+            reset(home, away) {
+                this.homeTeam = home; this.awayTeam = away;
+                this.hg = 0; this.ag = 0;
+                this.goalTick = 0; this.bannType = null; this.bannTick = 0;
+                this._form("kickoff");
+            }
+
+            setScore(h, a) { this.hg = h; this.ag = a; }
+
+            goal(humanScored) {
+                this.goalHuman = humanScored;
+                this.goalTick = 108 + Math.floor(Math.random() * 15);
+                this.bannType = null; this.bannTick = 0;
+                // Ball enters goal at random height (top / middle / bottom)
+                const gy = 0.30 + Math.random() * 0.40;
+                this.btx = humanScored ? 0.93 + Math.random() * 0.05 : 0.02 + Math.random() * 0.05;
+                this.bty = gy;
+            }
+
+            noGoal(humanMissed) {
+                this.bannType = "nogoal"; this.bannTick = 85 + Math.floor(Math.random() * 15);
+                this.bannHuman = humanMissed;
+                this.goalTick = 0;
+                // 3 variants: wide-top, wide-bottom, over the bar
+                const r = Math.random();
+                if (r < 0.34) {
+                    // Over the bar — ball exits top edge near goal
+                    this.btx = humanMissed ? 0.91 + Math.random()*0.06 : 0.03 + Math.random()*0.06;
+                    this.bty = 0.02;
+                } else if (r < 0.67) {
+                    // Wide — exits past side/top corner
+                    this.btx = humanMissed ? 0.99 : 0.01;
+                    this.bty = 0.06 + Math.random() * 0.12;
+                } else {
+                    // Wide low — exits bottom corner
+                    this.btx = humanMissed ? 0.99 : 0.01;
+                    this.bty = 0.82 + Math.random() * 0.14;
+                }
+            }
+
+            saved(humanAttacking) {
+                this.bannType = "saved"; this.bannTick = 75 + Math.floor(Math.random() * 15);
+                this.bannHuman = humanAttacking;
+                this.goalTick = 0;
+                // Rebound varies: straight back, tip over, or to side
+                const r = Math.random();
+                if (r < 0.40) {
+                    // Punched / parried back to centre
+                    this.btx = humanAttacking ? 0.68 + Math.random()*0.12 : 0.20 + Math.random()*0.12;
+                    this.bty = 0.40 + Math.random() * 0.20;
+                } else if (r < 0.70) {
+                    // Tipped over bar — ball exits top
+                    this.btx = humanAttacking ? 0.90 + Math.random()*0.06 : 0.04 + Math.random()*0.06;
+                    this.bty = 0.02;
+                } else {
+                    // Deflected wide to side
+                    this.btx = humanAttacking ? 0.82 + Math.random()*0.10 : 0.08 + Math.random()*0.10;
+                    this.bty = 0.10 + Math.random() * 0.70;
+                }
+            }
+
+            clearBanner() {
+                this.bannType = null; this.bannTick = 0; this.goalTick = 0;
+            }
+
+            setState(name) { this._form(name); }
+
+            _form(name) {
+                const F = {
+                    kickoff: [
+                        { h:[{tx:.12,ty:.78},{tx:.40,ty:.48}], a:[{tx:.60,ty:.30},{tx:.67,ty:.50},{tx:.62,ty:.68},{tx:.74,ty:.42}], b:{tx:.50,ty:.50} },
+                    ],
+                    "attack-human": [
+                        { h:[{tx:.58,ty:.48},{tx:.70,ty:.40}], a:[{tx:.50,ty:.30},{tx:.52,ty:.54},{tx:.48,ty:.70},{tx:.56,ty:.40}], b:{tx:.80,ty:.46} },
+                        { h:[{tx:.62,ty:.44},{tx:.76,ty:.55}], a:[{tx:.46,ty:.26},{tx:.54,ty:.58},{tx:.50,ty:.72},{tx:.60,ty:.36}], b:{tx:.84,ty:.52} },
+                        { h:[{tx:.55,ty:.53},{tx:.68,ty:.38}], a:[{tx:.48,ty:.34},{tx:.56,ty:.50},{tx:.44,ty:.66},{tx:.62,ty:.44}], b:{tx:.78,ty:.40} },
+                    ],
+                    "attack-ai": [
+                        { h:[{tx:.22,ty:.55},{tx:.32,ty:.46}], a:[{tx:.40,ty:.28},{tx:.48,ty:.52},{tx:.42,ty:.70},{tx:.56,ty:.40}], b:{tx:.34,ty:.55} },
+                        { h:[{tx:.18,ty:.60},{tx:.28,ty:.44}], a:[{tx:.38,ty:.24},{tx:.50,ty:.56},{tx:.40,ty:.74},{tx:.54,ty:.36}], b:{tx:.30,ty:.48} },
+                        { h:[{tx:.24,ty:.50},{tx:.36,ty:.58}], a:[{tx:.42,ty:.32},{tx:.46,ty:.50},{tx:.44,ty:.68},{tx:.58,ty:.42}], b:{tx:.36,ty:.60} },
+                    ],
+                    "full-time": [
+                        { h:[{tx:.42,ty:.52},{tx:.55,ty:.46}], a:[{tx:.52,ty:.38},{tx:.60,ty:.54},{tx:.54,ty:.68},{tx:.62,ty:.44}], b:{tx:.50,ty:.50} },
+                    ],
+                };
+                const arr = F[name] || F["kickoff"];
+                const f = arr[Math.floor(Math.random() * arr.length)];
+                f.h.forEach((p,i) => { if(this.pl[i]){this.pl[i].tx=p.tx;this.pl[i].ty=p.ty;} });
+                f.a.forEach((p,i) => { if(this.pl[2+i]){this.pl[2+i].tx=p.tx;this.pl[2+i].ty=p.ty;} });
+                this.btx = f.b.tx; this.bty = f.b.ty;
+            }
+
+            _loop(t) {
+                this._raf = requestAnimationFrame(this._loop);
+                this.phase = (t * 0.003) % (Math.PI * 2);
+                const sp = 0.07;
+                for (const p of this.pl) { p.x += (p.tx-p.x)*sp; p.y += (p.ty-p.y)*sp; }
+                this.bx += (this.btx-this.bx)*0.13; this.by += (this.bty-this.by)*0.13;
+                if (this.goalTick > 0) this.goalTick--;
+                if (this.bannTick > 0) this.bannTick--;
+                this._draw();
+            }
+
+            _px(nx) { return 42 + nx * 556; }
+            _py(ny) { return 16 + ny * 256; }
+
+            _draw() {
+                const {g,W,H} = this;
+                // Pitch stripes
+                for (let i=0;i<8;i++) {
+                    g.fillStyle = i%2===0 ? "#19d934" : "#17c830";
+                    g.fillRect(42+i*69.5, 0, 70, H);
+                }
+                g.fillStyle="#19d934"; g.fillRect(0,0,42,H); g.fillRect(598,0,42,H);
+
+                // Lines
+                g.strokeStyle="#fff065"; g.lineWidth=2.2;
+                // Outer
+                g.strokeRect(this._px(0),this._py(0),this._px(1)-this._px(0),this._py(1)-this._py(0));
+                // Centre line
+                g.beginPath(); g.moveTo(this._px(.5),this._py(0)); g.lineTo(this._px(.5),this._py(1)); g.stroke();
+                // Centre circle
+                g.beginPath(); g.ellipse(this._px(.5),this._py(.5),73,58,0,0,Math.PI*2); g.stroke();
+                // Right penalty box
+                g.strokeRect(this._px(.72),this._py(.18),this._px(1)-this._px(.72),this._py(.82)-this._py(.18));
+                // Right goal box
+                g.strokeRect(this._px(.88),this._py(.31),this._px(1)-this._px(.88),this._py(.69)-this._py(.31));
+                // Left penalty box
+                g.strokeRect(this._px(0),this._py(.18),this._px(.28)-this._px(0),this._py(.82)-this._py(.18));
+                // Left goal box
+                g.strokeRect(this._px(0),this._py(.31),this._px(.12)-this._px(0),this._py(.69)-this._py(.31));
+
+                // Ball
+                g.fillStyle="#1a44e0";
+                g.beginPath(); g.arc(this._px(this.bx),this._py(this.by),5.5,0,Math.PI*2); g.fill();
+
+                // Players
+                for (const p of this.pl) {
+                    const moving = (Math.abs(p.x-p.tx)+Math.abs(p.y-p.ty))>0.018;
+                    this._fig(this._px(p.x), this._py(p.y), p.h, moving);
+                }
+
+                // Event banners
+                if (this.goalTick > 0) this._goalBanner(W, H, Math.min(1, this.goalTick/8));
+                else if (this.bannTick > 0) this._simBanner(W, H, Math.min(1, this.bannTick/8));
+            }
+
+            _fig(x, y, isHome, run) {
+                const g=this.g, c=isHome?"#f7f4e9":"#0d0d0d", s=21, ph=this.phase;
+                g.strokeStyle=c; g.fillStyle=c; g.lineWidth=2;
+                // Head
+                g.beginPath(); g.arc(x, y-s*.55, s*.20, 0, Math.PI*2); g.fill();
+                // Body
+                g.beginPath(); g.moveTo(x,y-s*.35); g.lineTo(x,y+s*.08); g.stroke();
+                // Arms
+                const sw = run ? Math.sin(ph*3)*.22 : 0;
+                g.beginPath(); g.moveTo(x-s*(.36+sw),y-s*.20); g.lineTo(x+s*(.36-sw),y-s*.20); g.stroke();
+                // Legs
+                const lw = run ? Math.sin(ph*3)*.38 : 0;
+                g.beginPath(); g.moveTo(x,y+s*.08); g.lineTo(x-s*(.30+lw),y+s*.46); g.stroke();
+                g.beginPath(); g.moveTo(x,y+s*.08); g.lineTo(x+s*(.30-lw),y+s*.46); g.stroke();
+            }
+
+            _simBanner(W, H, alpha) {
+                const g = this.g;
+                const isNoGoal = this.bannType === "nogoal";
+                const text = isNoGoal ? "NO GOAL!" : "SAVED!";
+                g.globalAlpha = alpha;
+                const bH = 46, bW = 280, bX = (W - bW) / 2, bY = 10;
+                g.fillStyle = "#f7f4e9";
+                g.fillRect(bX, bY, bW, bH);
+                g.strokeStyle = "#111111"; g.lineWidth = 3;
+                g.strokeRect(bX, bY, bW, bH);
+                g.fillStyle = "#111111";
+                g.font = `bold 26px "Courier New"`;
+                g.textAlign = "center"; g.textBaseline = "middle";
+                g.fillText(text, W / 2, bY + bH / 2);
+                g.globalAlpha = 1;
+            }
+
+            _goalBanner(W, H, alpha) {
+                const g=this.g, bH=H*.40;
+                g.globalAlpha = alpha;
+                // Red bg
+                g.fillStyle="#bb1111"; g.fillRect(0,0,W,bH);
+                // Star grid
+                g.fillStyle="#f7f15b";
+                for (let col=0;col<W;col+=22) for (let row=4;row<bH*.62;row+=15)
+                    if (((col/22|0)+(row/15|0))%2===0) g.fillRect(col+4,row+2,7,7);
+                // GOAL! text
+                g.font=`bold ${Math.floor(bH*.58)}px "Courier New"`;
+                g.textAlign="center"; g.textBaseline="middle";
+                g.fillText("GOAL!", W/2, bH*.44);
+                // Score bar
+                g.fillStyle="#f7f4e9"; g.fillRect(0,bH,W,bH*.30);
+                const sf=Math.floor(bH*.24);
+                g.font=`bold ${sf}px "Courier New"`;
+                const sy=bH*1.15;
+                g.textAlign="left";
+                g.fillStyle=this.goalHuman?"#1748c7":"#bb1111";
+                g.fillText(this.homeTeam,10,sy);
+                g.fillStyle="#111"; g.textAlign="center";
+                g.fillText(String(this.hg),W*.42,sy);
+                g.fillStyle=this.goalHuman?"#bb1111":"#1748c7";
+                g.textAlign="left"; g.fillText(this.awayTeam,W*.50,sy);
+                g.fillStyle="#111"; g.textAlign="right";
+                g.fillText(String(this.ag),W-10,sy);
+                g.globalAlpha=1;
+            }
+
+            destroy() { if(this._raf){cancelAnimationFrame(this._raf);this._raf=null;} }
+        }
+
+        let matchViz = null;
+        // Defer init until DOM is ready (canvas element may not exist yet if no game)
+        function ensureViz() {
+            if (!matchViz || !matchViz.cv) matchViz = new MatchVisualizer("pitchCanvas");
+            return matchViz;
         }
 
         function render() {
@@ -484,20 +736,22 @@
                 </thead>
                 <tbody>${tbody}</tbody>`;
 
-            // Match report
-            const reports = state.last_matches || [];
-            document.getElementById("latestMatch").innerHTML = reports.length
-                ? reports.map(m => {
-                    const events = m.report.filter(l => !isFinanceLine(l));
-                    const finances = m.report.filter(l => isFinanceLine(l));
-                    return `
-                    <article class="report">
-                        <div class="score">${esc(m.home)} ${m.home_goals} – ${m.away_goals} ${esc(m.away)}</div>
-                        <ul>${events.map(reportLine).join("")}</ul>
-                        ${financeHtml(finances)}
-                    </article>`;
-                }).join("")
-                : "Awaiting kick-off.";
+            // Match report — skip during animation (animateMatchReport handles live updates)
+            if (!animating) {
+                const reports = state.last_matches || [];
+                document.getElementById("latestMatch").innerHTML = reports.length
+                    ? reports.map(m => {
+                        const events = m.report.filter(l => !isFinanceLine(l) && !isBoringLine(l));
+                        const finances = m.report.filter(l => isFinanceLine(l));
+                        return `
+                        <article class="report">
+                            <div class="score">${esc(m.home)} ${m.home_goals} – ${m.away_goals} ${esc(m.away)}</div>
+                            <ul>${events.map(reportLine).join("")}</ul>
+                            ${financeHtml(finances)}
+                        </article>`;
+                    }).join("")
+                    : "Awaiting kick-off.";
+            }
 
             // Other matches (only when not mid-animation)
             if (!animating && uiPhase === "report") {

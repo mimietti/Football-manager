@@ -162,7 +162,7 @@ button:disabled {
     align-items: center;
     justify-content: space-between;
     gap: 12px;
-    margin-bottom: 12px;
+    margin-bottom: 6px;
 }
 .panel-title-row h2 {
     margin: 0;
@@ -207,10 +207,14 @@ button:disabled {
     overflow: hidden;
     border: 1px solid var(--line);
     border-radius: 8px;
-    background:
-        linear-gradient(180deg, rgba(255,255,255,0.18) 0 28px, transparent 28px),
-        repeating-linear-gradient(0deg, rgba(255,255,255,0.035) 0 2px, transparent 2px 4px),
-        #19d934;
+    background: #19d934;
+}
+.pitch-canvas {
+    position: absolute;
+    inset: 0;
+    width: 100%;
+    height: 100%;
+    display: block;
 }
 .pitch-lines {
     position: absolute;
@@ -275,6 +279,37 @@ button:disabled {
     overflow: hidden;
     text-overflow: ellipsis;
 }
+.pitch-flash {
+    position: absolute;
+    inset: 0;
+    z-index: 3;
+    pointer-events: none;
+    opacity: 0;
+}
+@keyframes flashGoalHuman {
+    0%,25% { opacity: 0.72; background: rgba(247,241,91,0.85); }
+    100% { opacity: 0; }
+}
+@keyframes flashGoalAI {
+    0%,25% { opacity: 0.72; background: rgba(224,80,80,0.7); }
+    100% { opacity: 0; }
+}
+.pitch-flash.flash-goal-human { animation: flashGoalHuman 1.4s ease-out forwards; }
+.pitch-flash.flash-goal-ai { animation: flashGoalAI 1.4s ease-out forwards; }
+
+/* Pixel player positions animate between match states */
+.pixel-player {
+    transition: left 0.5s ease, right 0.5s ease, top 0.5s ease;
+}
+.scoreboard-still.attack-human .pixel-player.p1 { left: 50%; top: 38%; }
+.scoreboard-still.attack-human .pixel-player.p2 { left: 60%; top: 50%; }
+.scoreboard-still.attack-human .pixel-player.p3 { right: 40%; top: 46%; }
+.scoreboard-still.attack-human .pixel-player.p4 { right: 36%; top: 62%; }
+.scoreboard-still.attack-ai .pixel-player.p1 { left: 28%; top: 50%; }
+.scoreboard-still.attack-ai .pixel-player.p2 { left: 38%; top: 62%; }
+.scoreboard-still.attack-ai .pixel-player.p3 { right: 20%; top: 32%; }
+.scoreboard-still.attack-ai .pixel-player.p4 { right: 16%; top: 48%; }
+
 .pixel-player,
 .pixel-ball {
     position: absolute;
@@ -355,12 +390,12 @@ select {
     color: var(--text);
 }
 .team-summary {
-    display: grid;
-    grid-template-columns: repeat(2, minmax(0, 1fr));
-    gap: 4px 10px;
-    margin-bottom: 8px;
+    display: flex;
+    flex-wrap: wrap;
+    gap: 2px 16px;
+    margin-bottom: 6px;
     color: var(--muted);
-    font-size: 14px;
+    font-size: 12px;
 }
 .finance-actions {
     display: grid;
@@ -371,9 +406,10 @@ select {
 }
 .finance-actions input {
     width: 132px;
+    padding: 6px 10px;
 }
 .finance-actions button {
-    padding: 8px 9px;
+    padding: 6px 9px;
     border-radius: 8px;
     font-size: 12px;
 }
@@ -389,7 +425,7 @@ select {
 }
 .player-list {
     display: grid;
-    gap: 6px;
+    gap: 3px;
 }
 .squad-grid {
     grid-template-columns: repeat(auto-fit, minmax(360px, 1fr));
@@ -397,12 +433,12 @@ select {
 }
 .squad-column {
     display: grid;
-    gap: 6px;
+    gap: 4px;
 }
 .squad-column h3 {
     margin: 0;
     color: var(--accent);
-    font-size: 17px;
+    font-size: 12px;
     letter-spacing: 0.08em;
     text-transform: uppercase;
 }
@@ -411,32 +447,37 @@ select {
     grid-template-columns: minmax(116px, 1fr) 42px 64px 92px auto;
     gap: 6px;
     align-items: center;
-    padding: 4px 8px;
+    padding: 2px 6px;
     background: var(--accent);
     color: #141207;
     font-family: "Courier New", monospace;
-    font-size: 16px;
+    font-size: 13px;
     font-weight: 900;
     text-transform: uppercase;
 }
 .transfer-inline {
-    margin-bottom: 8px;
-    padding: 10px;
+    margin-bottom: 6px;
+    padding: 8px 10px;
     border: 1px solid rgba(214,199,93,0.22);
     border-radius: 8px;
     background: rgba(214,199,93,0.07);
+}
+.transfer-inline h2 {
+    font-size: 13px;
+    margin-bottom: 6px;
+    letter-spacing: 0.04em;
 }
 .player-row {
     display: grid;
     grid-template-columns: minmax(116px, 1fr) 42px 64px 92px auto;
     gap: 6px;
     align-items: center;
-    padding: 7px 8px;
+    padding: 3px 6px;
     border: 1px solid rgba(255,255,255,0.08);
     border-radius: 4px;
     background: rgba(0,0,0,0.16);
     font-family: "Courier New", monospace;
-    font-size: 16px;
+    font-size: 14px;
     line-height: 1.18;
 }
 .player-row.active-player {
@@ -454,7 +495,7 @@ select {
 .player-row span {
     margin-top: 0;
     color: var(--muted);
-    font-size: 16px;
+    font-size: 14px;
 }
 .energy-value {
     display: inline;
@@ -471,8 +512,8 @@ select {
     justify-content: flex-end;
 }
 .player-actions button {
-    padding: 7px 9px;
-    font-size: 13px;
+    padding: 3px 7px;
+    font-size: 12px;
 }
 table {
     width: 100%;
