@@ -39,17 +39,15 @@ body {
         linear-gradient(90deg, transparent 49%, rgba(255,255,255,0.55) 49% 51%, transparent 51%),
         repeating-linear-gradient(90deg, #1f7042 0 88px, #185d36 88px 176px);
 }
-.pitch::before,
-.pitch::after {
+.pitch::before {
     content: "";
     position: absolute;
     top: 38px;
     bottom: 38px;
-    width: 110px;
-    border: 3px solid rgba(255,255,255,0.55);
+    left: 18px;
+    width: 80px;
+    border: 3px solid rgba(255,255,255,0.40);
 }
-.pitch::before { left: 18px; }
-.pitch::after { right: 18px; }
 .hero-content {
     position: relative;
     min-height: 120px;
@@ -444,7 +442,7 @@ select {
 }
 .squad-table-head {
     display: grid;
-    grid-template-columns: minmax(116px, 1fr) 42px 64px 92px auto;
+    grid-template-columns: minmax(116px, 1fr) 42px 64px 92px 158px;
     gap: 6px;
     align-items: center;
     padding: 2px 6px;
@@ -469,7 +467,7 @@ select {
 }
 .player-row {
     display: grid;
-    grid-template-columns: minmax(116px, 1fr) 42px 64px 92px auto;
+    grid-template-columns: minmax(116px, 1fr) 42px 64px 92px 158px;
     gap: 6px;
     align-items: center;
     padding: 3px 6px;
