@@ -323,11 +323,30 @@ tr.player {
 }
 .muted { color: var(--muted); }
 .small { font-size: 12px; }
+.pos-d { color: #6ec6ff; }
+.pos-m { color: #d6c75d; }
+.pos-a { color: #ff8a65; }
+button.btn-playing {
+    background: rgba(117,212,131,0.18);
+    border-color: rgba(117,212,131,0.5);
+    color: #75d483;
+}
+button.btn-bench {
+    background: rgba(255,255,255,0.05);
+    color: rgba(245,246,232,0.45);
+}
 em.inj {
-    color: var(--red);
+    display: inline-block;
+    color: #fff;
+    background: var(--red);
     font-style: normal;
-    font-size: 11px;
-    margin-left: 4px;
+    font-size: 10px;
+    font-weight: 800;
+    letter-spacing: 0.05em;
+    padding: 1px 5px;
+    border-radius: 4px;
+    margin-left: 6px;
+    vertical-align: middle;
 }
 @media (max-width: 780px) {
     .hero-content,

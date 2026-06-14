@@ -76,6 +76,7 @@ class SeasonState:
     last_human_matches: list[MatchResult] = field(default_factory=list)
     transfer_market: list[Player] = field(default_factory=list)
     season_number: int = 0
+    transfer_window: bool = False   # opens after each match, closes when next match starts
     # cup replay flag (set when a cup match ends level)
     _cup_replay: bool = False
 
@@ -156,6 +157,7 @@ class SeasonState:
         if self.season_over:
             return self.last_human_matches
 
+        self.transfer_window = False   # close window while match is being played
         lc, cup_round_next, ml_next = self._next_lc()
 
         # Advance counters
@@ -286,6 +288,7 @@ class SeasonState:
             )
 
         self.last_human_matches = human_results
+        self.transfer_window = True    # open window after match
         return human_results
 
     # ── Cup prize money ───────────────────────────────────────────────────────
@@ -378,6 +381,8 @@ class SeasonState:
     # ── Management actions ───────────────────────────────────────────────────
 
     def buy_player(self, team_name: str, player_id: str) -> None:
+        if not self.transfer_window:
+            raise ValueError("Transfer window is closed — play a match first.")
         team = self.find_team(team_name)
         player = next((p for p in self.transfer_market if p.id == player_id), None)
         if not player:
@@ -392,6 +397,8 @@ class SeasonState:
         self.transfer_market = [p for p in self.transfer_market if p.id != player_id]
 
     def sell_player(self, team_name: str, player_id: str) -> None:
+        if not self.transfer_window:
+            raise ValueError("Transfer window is closed — play a match first.")
         team = self.find_team(team_name)
         sold = team.sell(player_id)
         sold.value = max(1000, round(sold.value * 0.9))
@@ -540,6 +547,7 @@ class SeasonState:
             "table": league_table,
             "last_matches": [m.to_dict() for m in self.last_human_matches],
             "transfer_market": [p.to_dict(False) for p in self.transfer_market],
+            "transfer_window": self.transfer_window,
             "inspiration": "Faithful port of the 1982 Football Manager by Kevin & John Toms.",
         }
 

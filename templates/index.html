@@ -95,9 +95,9 @@
                 </div>
                 <div id="squadList" class="player-list"></div>
             </div>
-            <div class="panel">
-                <h2>Transfer Market</h2>
-                <p class="muted small">Original squad members available for signing</p>
+            <div class="panel" id="transferPanel" style="display:none">
+                <h2>Transfer Window</h2>
+                <p class="muted small">Available until next match</p>
                 <div id="transferMarket" class="player-list"></div>
             </div>
         </section>
@@ -203,9 +203,13 @@
                     (human.squad || []).map(p => playerRow(p, human.name, true)).join("");
             }
 
-            // Transfer market
-            document.getElementById("transferMarket").innerHTML =
-                (state.transfer_market || []).map(p => playerRow(p, human?.name || "", false)).join("");
+            // Transfer market — only visible after a match
+            const transferPanel = document.getElementById("transferPanel");
+            transferPanel.style.display = state.transfer_window ? "" : "none";
+            if (state.transfer_window) {
+                document.getElementById("transferMarket").innerHTML =
+                    (state.transfer_market || []).map(p => playerRow(p, human?.name || "", false)).join("");
+            }
         }
 
         function renderTeamSummary(team) {
@@ -228,20 +232,28 @@
             return pos === "D" ? "DEF" : pos === "M" ? "MID" : "ATK";
         }
 
+        function posClass(pos) {
+            return pos === "D" ? "pos-d" : pos === "M" ? "pos-m" : "pos-a";
+        }
+
         function playerRow(player, teamName, owned) {
             const inj = player.injured ? ` <em class="inj">INJ</em>` : "";
-            const moraleStr = player.morale != null ? ` · Morale ${player.morale}/20` : "";
-            const statLine = `${posLabel(player.position)} · Skill ${player.skill} · Energy ${player.energy}/20${moraleStr} · Value ${fmt(player.value)}`;
+            const moraleStr = player.morale != null ? `Morale ${player.morale}/20 · ` : "";
+            const statLine = `${posLabel(player.position)} · Skill ${player.skill} · Energy ${player.energy}/20`;
+            const statLine2 = `${moraleStr}Value ${fmt(player.value)}`;
+            const pc = posClass(player.position);
             if (owned) {
                 return `
                 <div class="player-row ${player.active ? "active-player" : ""} ${player.injured ? "injured-player" : ""}">
                     <div>
-                        <strong>${esc(player.name)}${inj}</strong>
+                        <strong class="${pc}">${esc(player.name)}${inj}</strong>
                         <span>${esc(statLine)}</span>
+                        <span>${esc(statLine2)}</span>
                     </div>
                     <div class="player-actions">
                         <button data-lineup="${esc(player.id)}" data-team="${esc(teamName)}"
-                            ${player.injured ? "disabled" : ""}>${player.active ? "Playing" : "Bench"}</button>
+                            class="${player.active ? "btn-playing" : "btn-bench"}"
+                            ${player.injured ? "disabled" : ""}>${player.active ? "▶ Playing" : "— Bench"}</button>
                         <button data-rename-player="${esc(player.id)}" data-team="${esc(teamName)}">Rename</button>
                         <button data-sell="${esc(player.id)}" data-team="${esc(teamName)}"
                             ${player.injured ? "disabled" : ""}>Sell</button>
@@ -251,8 +263,9 @@
                 return `
                 <div class="player-row">
                     <div>
-                        <strong>${esc(player.name)}</strong>
+                        <strong class="${pc}">${esc(player.name)}</strong>
                         <span>${esc(statLine)}</span>
+                        <span>${esc(statLine2)}</span>
                     </div>
                     <div class="player-actions">
                         <button data-buy="${esc(player.id)}" data-team="${esc(teamName)}">
