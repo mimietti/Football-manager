@@ -7,6 +7,7 @@ from .match_engine import MatchResult, Tactics, apply_result, simulate_match
 from .teams import (
     ALL_TEAM_NAMES,
     LEVEL_NAMES,
+    MAX_SQUAD_SIZE,
     Player,
     Team,
     create_retro_all_players,
@@ -381,12 +382,12 @@ class SeasonState:
         player = next((p for p in self.transfer_market if p.id == player_id), None)
         if not player:
             raise ValueError("Player not found in transfer market")
-        # BASIC lines 8760-8770: acceptance ratio check
-        offer_ratio = (random.randint(1, 10) * team.cash) / max(1, player.value)
-        if offer_ratio < 5:
+        if team.cash < player.value:
             raise ValueError(
-                f"{player.name} rejected your offer — try a higher bid."
+                f"Not enough cash — need £{player.value:,}, have £{team.cash:,}."
             )
+        if len(team.squad) >= MAX_SQUAD_SIZE:
+            raise ValueError(f"Squad full (max {MAX_SQUAD_SIZE} players).")
         team.buy(player)
         self.transfer_market = [p for p in self.transfer_market if p.id != player_id]
 

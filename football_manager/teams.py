@@ -229,12 +229,10 @@ class Team:
 
     def toggle_lineup(self, player_id: str) -> None:
         if player_id in self.lineup_ids:
-            if len(self.lineup_ids) <= LINEUP_SIZE:
-                raise ValueError("Must keep 11 in lineup")
+            if len(self.lineup_ids) <= 1:
+                raise ValueError("Must have at least 1 player in lineup")
             self.lineup_ids.remove(player_id)
         else:
-            if len(self.lineup_ids) >= LINEUP_SIZE:
-                raise ValueError("Lineup already has 11 players")
             player = next((p for p in self.squad if p.id == player_id), None)
             if not player:
                 raise ValueError("Player not found")
