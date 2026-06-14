@@ -462,12 +462,12 @@
                 this._corners();
                 // Players in pitch coords (px=along pitch, py=across pitch 0=top 1=bottom)
                 this.pl = [
-                    {px:.08,py:.50,tpx:.08,tpy:.50,h:true},
-                    {px:.38,py:.48,tpx:.38,tpy:.48,h:true},
-                    {px:.62,py:.32,tpx:.62,tpy:.32,h:false},
-                    {px:.68,py:.52,tpx:.68,tpy:.52,h:false},
-                    {px:.62,py:.70,tpx:.62,tpy:.70,h:false},
-                    {px:.76,py:.44,tpx:.76,tpy:.44,h:false},
+                    {px:.08,py:.50,tpx:.08,tpy:.50,human:true},
+                    {px:.38,py:.48,tpx:.38,tpy:.48,human:true},
+                    {px:.62,py:.32,tpx:.62,tpy:.32,human:false},
+                    {px:.68,py:.52,tpx:.68,tpy:.52,human:false},
+                    {px:.62,py:.70,tpx:.62,tpy:.70,human:false},
+                    {px:.76,py:.44,tpx:.76,tpy:.44,human:false},
                 ];
                 this.bpx=.50; this.bpy=.50; this.btpx=.50; this.btpy=.50;
                 this.bannType=null; this.bannTick=0; this.bannHuman=true;
@@ -528,9 +528,7 @@
             setScore(h, a) { this.hg=h; this.ag=a; }
 
             _shotOrigin(attackingRight) {
-                return attackingRight
-                    ? {px:.82+Math.random()*0.06, py:.40+Math.random()*0.22}
-                    : {px:.12+Math.random()*0.06, py:.40+Math.random()*0.22};
+                return {px:.75+Math.random()*0.06, py:.40+Math.random()*0.20};
             }
 
             goal(humanScored) {
@@ -542,7 +540,7 @@
                 this.bpx=origin.px; this.bpy=origin.py;
                 this.shotStart={px:this.bpx, py:this.bpy};
                 this.shotTraceTick=180;
-                this.btpx=humanScored?0.88+Math.random()*0.035:0.12-Math.random()*0.035;
+                this.btpx=0.84+Math.random()*0.035;
                 this.btpy=0.38+Math.random()*0.24;
                 this.shotActive=true; this._pending="goal";
             }
@@ -556,10 +554,10 @@
                 this.shotStart={px:this.bpx, py:this.bpy};
                 this.shotTraceTick=180;
                 const r=Math.random();
-                this.btpx=humanMissed?0.93:0.07;
+                this.btpx=0.90;
                 if(r<0.34) this.btpy=0.24+Math.random()*0.10;         // just above top post
                 else if(r<0.67) this.btpy=0.68+Math.random()*0.10;   // just below bottom post
-                else { this.btpx=humanMissed?0.96:0.04; this.btpy=0.08+Math.random()*0.12; } // over bar
+                else { this.btpx=0.92; this.btpy=0.08+Math.random()*0.12; } // over bar
                 this.shotActive=true; this._pending="nogoal";
             }
 
@@ -571,9 +569,9 @@
                 this.bpx=origin.px; this.bpy=origin.py;
                 this.shotStart={px:this.bpx, py:this.bpy};
                 this.shotTraceTick=180;
-                this.btpx=humanAttacking?0.84+Math.random()*0.04:0.12-Math.random()*0.04;
+                this.btpx=0.80+Math.random()*0.04;
                 this.btpy=0.37+Math.random()*0.26;
-                this.keeperSave={px:this.btpx, py:this.btpy, h:!humanAttacking};
+                this.keeperSave={px:this.btpx, py:this.btpy, human:!humanAttacking};
                 this.keeperTick=0;
                 this.shotActive=true; this._pending="saved";
             }
@@ -753,20 +751,20 @@
             _attackGoal() {
                 const g=this.g;
                 const P=(x,y)=>this._attackPoint(x,y);
-                const a=P(.53,.26), b=P(.53,.58);
-                const c=P(.66,.18), d=P(.70,.34), e=P(.73,.62), f=P(.60,.70);
+                const a=P(.64,.34), b=P(.64,.58);
+                const c=P(.72,.28), d=P(.82,.36), e=P(.82,.64), f=P(.72,.72);
                 g.save();
                 g.strokeStyle="#ffff00";
-                g.lineWidth=4;
+                g.lineWidth=3.2;
                 g.beginPath();
-                g.moveTo(a.x,a.y); g.lineTo(b.x,b.y);          // mouth
-                g.moveTo(a.x,a.y); g.lineTo(c.x,c.y);          // roof front
-                g.moveTo(c.x,c.y); g.lineTo(d.x,d.y);          // roof side
+                g.moveTo(a.x,a.y); g.lineTo(b.x,b.y);          // front post line
+                g.moveTo(a.x,a.y); g.lineTo(c.x,c.y);          // roof left
+                g.moveTo(c.x,c.y); g.lineTo(d.x,d.y);          // roof back
                 g.moveTo(d.x,d.y); g.lineTo(e.x,e.y);          // back post
-                g.moveTo(b.x,b.y); g.lineTo(f.x,f.y);          // floor front
+                g.moveTo(b.x,b.y); g.lineTo(f.x,f.y);          // floor left
                 g.moveTo(f.x,f.y); g.lineTo(e.x,e.y);          // floor back
-                g.moveTo(c.x,c.y); g.lineTo(f.x,f.y);          // near side net
-                g.moveTo(d.x,d.y); g.lineTo(b.x,b.y);          // cross brace
+                g.moveTo(c.x,c.y); g.lineTo(f.x,f.y);          // side net
+                g.moveTo(d.x,d.y); g.lineTo(b.x,b.y);          // diagonal net
                 g.stroke();
                 g.restore();
             }
@@ -797,24 +795,25 @@
                 const {g,W,H}=this;
                 g.fillStyle="#00bb00"; g.fillRect(0,0,W,H);
                 g.strokeStyle="#ffff00"; g.lineWidth=4;
-                // Penalty-area close-up copied from the BASIC-style composition.
-                this._attackLine([[.18,.98],[.44,.15],[.92,.10]]);
-                this._attackLine([[.44,.15],[.54,.72],[.30,.72]]);
-                this._attackLine([[.54,.72],[.92,.66]]);
-                this._attackLine([[.84,.11],[.89,.66]]);
-                this._attackLine([[.15,.55],[.26,.63]]);
-                this._attackLine([[.15,.55],[.14,.45]]);
+                // Broadcast close-up of the attacking third: fewer lines, clearer box.
+                this._attackLine([[.10,.92],[.38,.20],[.92,.16]]);
+                this._attackLine([[.10,.92],[.54,.90],[.92,.82]]);
+                this._attackLine([[.38,.20],[.54,.90]]);
+                this._attackLine([[.92,.16],[.92,.82]]);
+                this._attackLine([[.49,.36],[.77,.34],[.78,.65],[.53,.70],[.49,.36]]);
+                this._attackLine([[.20,.56],[.27,.64]]);
+                this._attackLine([[.20,.56],[.19,.48]]);
                 this._attackGoal();
                 this._attackShotArc();
                 const bs=this._ap(this.bpx,this.bpy);
                 this._ball(bs.x,bs.y,6);
                 for(const p of this.pl){
                     const s=this._ap(p.px,p.py);
-                    this._fig(s.x,s.y,p.h,(Math.abs(p.px-p.tpx)+Math.abs(p.py-p.tpy))>0.015);
+                    this._fig(s.x,s.y,p.human,(Math.abs(p.px-p.tpx)+Math.abs(p.py-p.tpy))>0.015);
                 }
                 if(this.keeperSave && (this.shotActive || this.keeperTick>0)) {
                     const ks=this._ap(this.keeperSave.px,this.keeperSave.py);
-                    this._keeper(ks.x,ks.y,this.keeperSave.h);
+                    this._keeper(ks.x,ks.y,this.keeperSave.human);
                 }
                 this._updateOverlay();
             }
@@ -846,11 +845,11 @@
                 this._ball(bs.x,bs.y,6);
                 for(const p of this.pl){
                     const s=this._ps(p.px,p.py);
-                    this._fig(s.x,s.y,p.h,(Math.abs(p.px-p.tpx)+Math.abs(p.py-p.tpy))>0.015);
+                    this._fig(s.x,s.y,p.human,(Math.abs(p.px-p.tpx)+Math.abs(p.py-p.tpy))>0.015);
                 }
                 if(this.keeperSave && (this.shotActive || this.keeperTick>0)) {
                     const ks=this._ps(this.keeperSave.px,this.keeperSave.py);
-                    this._keeper(ks.x,ks.y,this.keeperSave.h);
+                    this._keeper(ks.x,ks.y,this.keeperSave.human);
                 }
                 g.restore();
                 this._updateOverlay();
