@@ -67,7 +67,7 @@ h1 {
 h2 {
     margin: 0 0 12px;
     color: #fff2a8;
-    font-size: 14px;
+    font-size: 16px;
     letter-spacing: 0.06em;
     text-transform: uppercase;
 }
@@ -285,7 +285,7 @@ select {
     gap: 4px 10px;
     margin-bottom: 8px;
     color: var(--muted);
-    font-size: 13px;
+    font-size: 14px;
 }
 .finance-actions {
     display: grid;
@@ -327,8 +327,21 @@ select {
 .squad-column h3 {
     margin: 0;
     color: var(--accent);
-    font-size: 12px;
+    font-size: 15px;
     letter-spacing: 0.08em;
+    text-transform: uppercase;
+}
+.squad-table-head {
+    display: grid;
+    grid-template-columns: minmax(96px, 1fr) 34px 56px 78px auto;
+    gap: 6px;
+    align-items: center;
+    padding: 4px 8px;
+    background: var(--accent);
+    color: #141207;
+    font-family: "Courier New", monospace;
+    font-size: 15px;
+    font-weight: 900;
     text-transform: uppercase;
 }
 .transfer-inline {
@@ -340,13 +353,16 @@ select {
 }
 .player-row {
     display: grid;
-    grid-template-columns: minmax(0, 1fr) auto;
-    gap: 8px;
+    grid-template-columns: minmax(96px, 1fr) 34px 56px 78px auto;
+    gap: 6px;
     align-items: center;
     padding: 7px 8px;
     border: 1px solid rgba(255,255,255,0.08);
-    border-radius: 8px;
+    border-radius: 4px;
     background: rgba(0,0,0,0.16);
+    font-family: "Courier New", monospace;
+    font-size: 15px;
+    line-height: 1.15;
 }
 .player-row.active-player {
     border-color: rgba(117,212,131,0.42);
@@ -361,9 +377,9 @@ select {
     display: block;
 }
 .player-row span {
-    margin-top: 2px;
+    margin-top: 0;
     color: var(--muted);
-    font-size: 12px;
+    font-size: 15px;
 }
 .energy-value {
     display: inline;
@@ -381,12 +397,12 @@ select {
 }
 .player-actions button {
     padding: 6px 8px;
-    font-size: 11px;
+    font-size: 12px;
 }
 table {
     width: 100%;
     border-collapse: collapse;
-    font-size: 14px;
+    font-size: 15px;
 }
 th,
 td {
@@ -410,6 +426,7 @@ tr.player {
     margin: 12px 0 0;
     padding-left: 18px;
     color: var(--muted);
+    font-size: 16px;
     line-height: 1.55;
 }
 .match-finance {
@@ -451,7 +468,7 @@ tr.player {
     border: 1px solid var(--line);
     border-radius: 8px;
     background: var(--panel);
-    font-size: 13px;
+    font-size: 14px;
     color: var(--muted);
 }
 .status-bar span + span::before {
@@ -465,7 +482,7 @@ tr.player {
     color: var(--accent);
 }
 .next-fixture {
-    font-size: 14px;
+    font-size: 16px;
     color: var(--text);
     line-height: 1.5;
 }
@@ -512,7 +529,7 @@ em.inj {
     width: min(680px, 100%);
     border-collapse: collapse;
     margin: 4px auto 0;
-    font-size: 16px;
+    font-size: 18px;
     font-family: "Trebuchet MS", "Segoe UI", sans-serif;
 }
 .prematch-table th,
@@ -533,7 +550,7 @@ em.inj {
 .pm-picked {
     width: min(680px, 100%);
     margin: 12px auto 0;
-    font-size: 14px;
+    font-size: 16px;
     font-weight: 700;
     color: var(--accent);
     letter-spacing: 0.04em;
@@ -549,7 +566,7 @@ em.inj {
 }
 .other-matches-table {
     width: 100%;
-    font-size: 13px;
+    font-size: 15px;
     font-family: "Courier New", monospace;
 }
 .other-matches-table td {
