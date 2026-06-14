@@ -516,10 +516,17 @@
             return pos === "D" ? "pos-d" : pos === "M" ? "pos-m" : "pos-a";
         }
 
+        function energyClass(energy) {
+            if (energy >= 15) return "energy-high";
+            if (energy >= 8) return "energy-mid";
+            return "energy-low";
+        }
+
         function playerRow(player, teamName, owned) {
             const inj = player.injured ? ` <em class="inj">INJ</em>` : "";
             const moraleStr = player.morale != null ? `Morale ${player.morale}/20 · ` : "";
-            const statLine = `${posLabel(player.position)} · Skill ${player.skill} · Energy ${player.energy}/20`;
+            const statLine = `${posLabel(player.position)} · Skill ${player.skill}`;
+            const energyHtml = `<em class="energy-value ${energyClass(player.energy)}">Energy ${player.energy}/20</em>`;
             const statLine2 = `${moraleStr}Value ${fmt(player.value)}`;
             const pc = posClass(player.position);
             if (owned) {
@@ -528,7 +535,7 @@
                 <div class="player-row ${player.active ? "active-player" : ""} ${player.injured ? "injured-player" : ""}">
                     <div>
                         <strong class="${pc}">${esc(player.name)}${inj}</strong>
-                        <span>${esc(statLine)}</span>
+                        <span>${esc(statLine)} · ${energyHtml}</span>
                         <span>${esc(statLine2)}</span>
                     </div>
                     <div class="player-actions">
@@ -546,7 +553,7 @@
                 <div class="player-row">
                     <div>
                         <strong class="${pc}">${esc(player.name)}</strong>
-                        <span>${esc(statLine)}</span>
+                        <span>${esc(statLine)} · ${energyHtml}</span>
                         <span>${esc(statLine2)}</span>
                     </div>
                     <div class="player-actions">

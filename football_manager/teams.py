@@ -274,8 +274,14 @@ class Team:
                     player.energy = max(1, player.energy - 1)
                 else:
                     player.energy = min(20, player.energy + 1)
-                # BASIC line 6070-6080: random injury (1 in 20 chance)
-                if player.id in active_ids and random.randint(1, 20) == 20:
+                # Low energy increases injury risk; fresh players are less fragile.
+                if player.energy >= 15:
+                    injury_roll = 36
+                elif player.energy >= 8:
+                    injury_roll = 20
+                else:
+                    injury_roll = 10
+                if player.id in active_ids and random.randint(1, injury_roll) == injury_roll:
                     player.injured_weeks = 1
                     messages.append(f"{player.name} is injured.")
         # Remove injured players from lineup, then fill only those vacated spots

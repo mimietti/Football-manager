@@ -337,6 +337,14 @@ select {
     color: var(--muted);
     font-size: 12px;
 }
+.energy-value {
+    display: inline;
+    font-style: normal;
+    font-weight: 800;
+}
+.energy-high { color: var(--green); }
+.energy-mid { color: var(--accent); }
+.energy-low { color: var(--red); }
 .player-actions {
     display: flex;
     gap: 6px;
