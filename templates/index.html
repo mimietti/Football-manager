@@ -496,9 +496,9 @@
                 const {tl,tr,bl} = this.C;
                 const pitchW = tr.x - tl.x;   // screen width of pitch
                 const pitchH = bl.y - tl.y;   // screen height of pitch
-                const vw = pitchW * 0.50;      // tight view with the goal still visible
+                const vw = pitchW * 0.34;      // tight view of the penalty area
                 const scale = W / vw;
-                const vx0 = vs==="attack-human" ? tl.x + pitchW*0.48 : tl.x - pitchW*0.14;
+                const vx0 = vs==="attack-human" ? tl.x + pitchW*0.63 : tl.x - pitchW*0.18;
                 const viewH = H / scale;
                 const vy0 = tl.y + (pitchH - viewH) * 0.5;
                 g.setTransform(scale, 0, 0, scale, -vx0*scale, -vy0*scale);
@@ -691,37 +691,35 @@
             }
 
             _goal3d(isHome) {
-                const g=this.g; const depth=0.105; const gh=13;
+                const g=this.g; const depth=0.082; const gh=11;
                 const py1=0.36,py2=0.64;
-                const pxM=isHome?0:1;
-                const pxBack=isHome?depth:1-depth;
-                const side=isHome?1:-1;
-                const fl=this._ps(pxM,py1),fr=this._ps(pxM,py2);
-                const bl_=this._ps(pxBack,py1-.07*side),br_=this._ps(pxBack,py2+.07*side);
-                const roofL=this._ps(pxBack*.72+pxM*.28,py1-.12*side);
-                const roofR=this._ps(pxBack*.72+pxM*.28,py2+.12*side);
-                const backL=this._ps(pxBack,py1+.02*side);
-                const backR=this._ps(pxBack,py2-.02*side);
+                const mouth=isHome?0:1;
+                const back=isHome?depth:1-depth;
+                const roof1=isHome?py1-.11:py1+.11;
+                const roof2=isHome?py2+.11:py2-.11;
+                const floor1=isHome?py1+.03:py1-.03;
+                const floor2=isHome?py2-.03:py2+.03;
+                const post1=this._ps(mouth,py1), post2=this._ps(mouth,py2);
+                const roofA=this._ps(back,roof1), roofB=this._ps(back,roof2);
+                const floorA=this._ps(back,floor1), floorB=this._ps(back,floor2);
                 g.save();
-                g.strokeStyle="#ffff00"; g.lineWidth=2.2;
+                g.strokeStyle="#ffff00"; g.lineWidth=1.8;
                 g.beginPath();
-                // Mouth
-                g.moveTo(fl.x,fl.y-gh); g.lineTo(fr.x,fr.y-gh);
-                g.moveTo(fl.x,fl.y-gh); g.lineTo(fl.x,fl.y);
-                g.moveTo(fr.x,fr.y-gh); g.lineTo(fr.x,fr.y);
-                // Roof and side nets, copied from the BASIC-style angled outline.
-                g.moveTo(fl.x,fl.y-gh); g.lineTo(roofL.x,roofL.y-gh);
-                g.moveTo(fr.x,fr.y-gh); g.lineTo(roofR.x,roofR.y-gh);
-                g.moveTo(roofL.x,roofL.y-gh); g.lineTo(roofR.x,roofR.y-gh);
-                g.moveTo(fl.x,fl.y); g.lineTo(backL.x,backL.y);
-                g.moveTo(fr.x,fr.y); g.lineTo(backR.x,backR.y);
-                g.moveTo(backL.x,backL.y); g.lineTo(backR.x,backR.y);
-                g.moveTo(roofL.x,roofL.y-gh); g.lineTo(backL.x,backL.y);
-                g.moveTo(roofR.x,roofR.y-gh); g.lineTo(backR.x,backR.y);
-                g.moveTo(roofL.x,roofL.y-gh); g.lineTo(backR.x,backR.y);
-                g.moveTo(roofR.x,roofR.y-gh); g.lineTo(backL.x,backL.y);
-                g.moveTo(bl_.x,bl_.y-gh*.55); g.lineTo(backL.x,backL.y);
-                g.moveTo(br_.x,br_.y-gh*.55); g.lineTo(backR.x,backR.y);
+                // Front posts and crossbar.
+                g.moveTo(post1.x,post1.y-gh); g.lineTo(post2.x,post2.y-gh);
+                g.moveTo(post1.x,post1.y-gh); g.lineTo(post1.x,post1.y);
+                g.moveTo(post2.x,post2.y-gh); g.lineTo(post2.x,post2.y);
+                // Angled roof and floor, matching the BASIC outline.
+                g.moveTo(post1.x,post1.y-gh); g.lineTo(roofA.x,roofA.y-gh);
+                g.moveTo(post2.x,post2.y-gh); g.lineTo(roofB.x,roofB.y-gh);
+                g.moveTo(roofA.x,roofA.y-gh); g.lineTo(roofB.x,roofB.y-gh);
+                g.moveTo(post1.x,post1.y); g.lineTo(floorA.x,floorA.y);
+                g.moveTo(post2.x,post2.y); g.lineTo(floorB.x,floorB.y);
+                g.moveTo(floorA.x,floorA.y); g.lineTo(floorB.x,floorB.y);
+                // Side net supports and a single cross brace.
+                g.moveTo(roofA.x,roofA.y-gh); g.lineTo(floorA.x,floorA.y);
+                g.moveTo(roofB.x,roofB.y-gh); g.lineTo(floorB.x,floorB.y);
+                g.moveTo(roofA.x,roofA.y-gh); g.lineTo(floorB.x,floorB.y);
                 g.stroke();
                 g.restore();
             }
