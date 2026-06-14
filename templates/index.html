@@ -464,7 +464,8 @@
                 ];
                 this.bpx=.50; this.bpy=.50; this.btpx=.50; this.btpy=.50;
                 this.bannType=null; this.bannTick=0; this.bannHuman=true;
-                this.shotActive=false; this.shotStep=0.012; this._pending=null;
+                this.shotActive=false; this.shotStep=0.0055; this._pending=null;
+                this.shotStart=null; this.shotTraceTick=0;
                 this.keeperSave=null; this.keeperTick=0;
                 this._raf=null; this._loop=this._loop.bind(this);
                 this._raf=requestAnimationFrame(this._loop);
@@ -509,6 +510,7 @@
                 this.hg=0; this.ag=0; this._vs="kickoff";
                 this.goalTick=0; this.bannType=null; this.bannTick=0;
                 this.shotActive=false; this._pending=null;
+                this.shotStart=null; this.shotTraceTick=0;
                 this.keeperSave=null; this.keeperTick=0;
                 this._form("kickoff");
             }
@@ -521,6 +523,8 @@
                 // Snap ball to attacker's foot, then shoot into net
                 const idx=humanScored?1:2;
                 this.bpx=this.pl[idx].px; this.bpy=this.pl[idx].py;
+                this.shotStart={px:this.bpx, py:this.bpy};
+                this.shotTraceTick=180;
                 this.btpx=humanScored?0.97+Math.random()*0.04:0.02-Math.random()*0.03;
                 this.btpy=0.38+Math.random()*0.24;
                 this.shotActive=true; this._pending="goal";
@@ -532,6 +536,8 @@
                 // Snap ball to attacker, shoot wide or over
                 const idx=humanMissed?1:2;
                 this.bpx=this.pl[idx].px; this.bpy=this.pl[idx].py;
+                this.shotStart={px:this.bpx, py:this.bpy};
+                this.shotTraceTick=180;
                 const r=Math.random();
                 this.btpx=humanMissed?0.97:0.03;
                 if(r<0.34) this.btpy=0.24+Math.random()*0.10;         // just above top post
@@ -546,6 +552,8 @@
                 // Snap ball to attacker, shoot toward goal — stopped by keeper
                 const idx=humanAttacking?1:2;
                 this.bpx=this.pl[idx].px; this.bpy=this.pl[idx].py;
+                this.shotStart={px:this.bpx, py:this.bpy};
+                this.shotTraceTick=180;
                 this.btpx=humanAttacking?0.91+Math.random()*0.05:0.04+Math.random()*0.05;
                 this.btpy=0.37+Math.random()*0.26;
                 this.keeperSave={px:this.btpx, py:this.btpy, h:!humanAttacking};
@@ -556,6 +564,7 @@
             clearBanner() {
                 this.bannType=null; this.bannTick=0; this.goalTick=0;
                 this.shotActive=false; this._pending=null;
+                this.shotStart=null; this.shotTraceTick=0;
                 this.keeperSave=null; this.keeperTick=0;
             }
             setState(name) { this._vs=name; this._form(name); }
@@ -610,6 +619,8 @@
                 }
                 if(this.goalTick>0)this.goalTick--;
                 if(this.bannTick>0)this.bannTick--;
+                if(this.shotTraceTick>0)this.shotTraceTick--;
+                else if(!this.shotActive) this.shotStart=null;
                 if(this.keeperTick>0)this.keeperTick--;
                 else if(!this.shotActive && this._pending!=="saved") this.keeperSave=null;
                 this._draw();
@@ -633,12 +644,37 @@
                 g.stroke();
             }
 
+            _shotArc() {
+                if(!this.shotStart || (!this.shotActive && this.shotTraceTick<=0)) return;
+                const g=this.g;
+                const sx=this.shotStart.px, sy=this.shotStart.py;
+                const ex=this.shotActive?this.bpx:this.btpx, ey=this.shotActive?this.bpy:this.btpy;
+                const dx=ex-sx, dy=ey-sy;
+                const bend=0.035;
+                g.save();
+                g.strokeStyle="#f7f15b";
+                g.lineWidth=2.2;
+                g.setLineDash([5,4]);
+                g.beginPath();
+                for(let i=0;i<=24;i++){
+                    const t=i/24;
+                    const px=sx+dx*t;
+                    const py=sy+dy*t + Math.sin(Math.PI*t)*bend*(dx>=0?-1:1);
+                    const p=this._ps(px,py);
+                    i?g.lineTo(p.x,p.y):g.moveTo(p.x,p.y);
+                }
+                g.stroke();
+                g.restore();
+            }
+
             _goal3d(isHome) {
-                const g=this.g; const d=0.06; const gh=16;
+                const g=this.g; const d=0.075; const gh=13;
                 const py1=0.36,py2=0.64;
                 const pxF=isHome?0:1, pxB=isHome?-d:1+d;
                 const fl=this._ps(pxF,py1),fr=this._ps(pxF,py2);
                 const bl_=this._ps(pxB,py1),br_=this._ps(pxB,py2);
+                g.save();
+                g.strokeStyle="#ffff00"; g.lineWidth=2.2;
                 g.beginPath();
                 g.moveTo(fl.x,fl.y-gh); g.lineTo(fr.x,fr.y-gh);
                 g.moveTo(fl.x,fl.y-gh); g.lineTo(fl.x,fl.y);
@@ -650,7 +686,13 @@
                 g.moveTo(fr.x,fr.y-gh); g.lineTo(br_.x,br_.y-gh);
                 g.moveTo(fl.x,fl.y); g.lineTo(bl_.x,bl_.y);
                 g.moveTo(fr.x,fr.y); g.lineTo(br_.x,br_.y);
+                for(let i=1;i<4;i++){
+                    const t=i/4;
+                    g.moveTo(fl.x+(fr.x-fl.x)*t, fl.y+(fr.y-fl.y)*t-gh);
+                    g.lineTo(bl_.x+(br_.x-bl_.x)*t, bl_.y+(br_.y-bl_.y)*t-gh);
+                }
                 g.stroke();
+                g.restore();
             }
 
             _draw() {
@@ -671,6 +713,7 @@
                 this._lp([[1,.32],[.88,.32],[.88,.68],[1,.68],[1,.32]]);
                 this._parc(.75,.5,.13,.22,Math.PI*.58,Math.PI*1.42);
                 this._goal3d(true); this._goal3d(false);
+                this._shotArc();
                 const bs=this._ps(this.bpx,this.bpy);
                 this._ball(bs.x,bs.y,6);
                 for(const p of this.pl){
@@ -715,8 +758,8 @@
             }
 
             _keeper(x, y, isHome) {
-                const g=this.g,c=isHome?"#ffffff":"#111111",s=18,ph=this.phase;
-                g.strokeStyle=c; g.fillStyle=c; g.lineWidth=2.4;
+                const g=this.g,c=isHome?"#ffffff":"#111111",s=13,ph=this.phase;
+                g.strokeStyle=c; g.fillStyle=c; g.lineWidth=1.8;
                 g.beginPath(); g.arc(x,y-s*.70,s*.18,0,Math.PI*2); g.fill();
                 g.beginPath(); g.moveTo(x,y-s*.50); g.lineTo(x,y+s*.10); g.stroke();
                 const dive=Math.sin(ph*4)*s*.08;
@@ -728,28 +771,28 @@
             _simBanner(W, H, alpha) {
                 const g=this.g,text=this.bannType==="nogoal"?"NO GOAL!":"SAVED!";
                 g.globalAlpha=alpha;
-                const bH=46,bW=280,bX=(W-bW)/2,bY=10;
+                const bH=38,bW=220,bX=(W-bW)/2,bY=10;
                 g.fillStyle="#f7f4e9"; g.fillRect(bX,bY,bW,bH);
-                g.strokeStyle="#111111"; g.lineWidth=3; g.strokeRect(bX,bY,bW,bH);
-                g.fillStyle="#111111"; g.font="bold 26px \"Courier New\"";
+                g.strokeStyle="#111111"; g.lineWidth=2; g.strokeRect(bX,bY,bW,bH);
+                g.fillStyle="#111111"; g.font="bold 22px \"Courier New\"";
                 g.textAlign="center"; g.textBaseline="middle";
                 g.fillText(text,W/2,bY+bH/2); g.globalAlpha=1;
             }
 
             _goalBanner(W, H, alpha) {
-                const g=this.g,bH=H*.40;
+                const g=this.g,bH=Math.min(H*.26,150);
                 g.globalAlpha=alpha;
                 g.fillStyle="#bb1111"; g.fillRect(0,0,W,bH);
                 g.fillStyle="#f7f15b";
                 for(let col=0;col<W;col+=22) for(let row=4;row<bH*.62;row+=15)
                     if(((col/22|0)+(row/15|0))%2===0) g.fillRect(col+4,row+2,7,7);
-                g.font="bold "+Math.floor(bH*.58)+"px \"Courier New\"";
+                g.font="bold "+Math.floor(bH*.50)+"px \"Courier New\"";
                 g.textAlign="center"; g.textBaseline="middle"; g.fillStyle="#f7f4e9";
-                g.fillText("GOAL!",W/2,bH*.44);
-                g.fillStyle="#f7f4e9"; g.fillRect(0,bH,W,bH*.30);
-                const sf=Math.floor(bH*.24);
+                g.fillText("GOAL!",W/2,bH*.38);
+                g.fillStyle="#f7f4e9"; g.fillRect(0,bH,W,Math.max(28,bH*.24));
+                const sf=Math.max(18,Math.floor(bH*.18));
                 g.font="bold "+sf+"px \"Courier New\"";
-                const sy=bH*1.15;
+                const sy=bH+Math.max(20,bH*.17);
                 g.textAlign="left"; g.fillStyle=this.goalHuman?"#1748c7":"#bb1111";
                 g.fillText(this.homeTeam,10,sy);
                 g.fillStyle="#111"; g.textAlign="center"; g.fillText(String(this.hg),W*.42,sy);
