@@ -206,12 +206,29 @@
             document.getElementById("managementLayout").style.display = phase === "management" ? "" : "none";
         }
 
-        function reportLine(line) {
+        function minuteForEvent(index, total, line) {
             const l = String(line ?? "");
-            if (l.startsWith("GOAL")) return `<li class="event-goal">${esc(l)}</li>`;
-            if (l.includes("intercepts") || l.includes("is saved")) return `<li class="event-save">${esc(l)}</li>`;
-            if (l.includes("shoots wide") || l.includes("shoot wide")) return `<li class="event-wide">${esc(l)}</li>`;
-            return `<li>${esc(l)}</li>`;
+            if (l.startsWith("Final score:")) return 90;
+            if (total <= 1) return 45;
+            return Math.max(1, Math.min(89, Math.round(1 + (index * 88) / (total - 1))));
+        }
+
+        function timedReportEvents(report) {
+            const events = (report || []).filter(l => !isFinanceLine(String(l ?? "")) && !isBoringLine(String(l ?? "")));
+            return events.map((line, index) => ({
+                line,
+                minute: minuteForEvent(index, events.length, line),
+            }));
+        }
+
+        function reportLine(item) {
+            const l = String(item?.line ?? item ?? "");
+            const minute = item?.minute ? `<span class="match-minute">${item.minute}'</span>` : "";
+            const content = `${minute}<span>${esc(l)}</span>`;
+            if (l.startsWith("GOAL")) return `<li class="event-goal">${content}</li>`;
+            if (l.includes("intercepts") || l.includes("is saved")) return `<li class="event-save">${content}</li>`;
+            if (l.includes("shoots wide") || l.includes("shoot wide")) return `<li class="event-wide">${content}</li>`;
+            return `<li>${content}</li>`;
         }
 
         function reportLineClass(line) {
@@ -323,12 +340,15 @@
                 article.appendChild(ul);
 
                 const financeLines = [];
+                const eventMinutes = timedReportEvents(m.report);
+                let eventIndex = 0;
 
                 for (const line of m.report) {
                     const l = String(line ?? "");
 
                     if (isFinanceLine(l)) { financeLines.push(l); continue; }
                     if (isBoringLine(l)) continue;
+                    const eventMeta = eventMinutes[eventIndex++] || { minute: 45, line: l };
 
                     const isFinal  = l.startsWith("Final score:");
                     const isGoal   = l.startsWith("GOAL");
@@ -354,14 +374,16 @@
                         viz.noGoal(humanMissed);
                     } else if (isSaved) {
                         // "X is saved" → X was the attacker
-                        const humanAttacking = humanName && l.startsWith(humanName);
+                        const humanAttacking = humanIsHome
+                            ? l.includes(`by ${m.away}`)
+                            : l.includes(`by ${m.home}`);
                         viz.setState(humanAttacking ? "attack-human" : "attack-ai");
                         viz.saved(humanAttacking);
                     } else if (isIntercept) {
                         // "Y intercepts" → Y is the defender, so other team was attacking
                         const humanDefends = humanName && l.startsWith(humanName);
                         viz.setState(humanDefends ? "attack-ai" : "attack-human");
-                        viz.saved(humanDefends);
+                        viz.saved(!humanDefends);
                     } else if (isFinal) {
                         curHome = m.home_goals;
                         curAway = m.away_goals;
@@ -391,7 +413,13 @@
                     const li = document.createElement("li");
                     const cls = reportLineClass(l);
                     if (cls) li.className = cls;
-                    li.textContent = l;
+                    const minute = document.createElement("span");
+                    minute.className = "match-minute";
+                    minute.textContent = `${eventMeta.minute}'`;
+                    const text = document.createElement("span");
+                    text.textContent = l;
+                    li.appendChild(minute);
+                    li.appendChild(text);
                     ul.appendChild(li);
                     li.scrollIntoView({ behavior: "smooth", block: "nearest" });
 
@@ -437,6 +465,7 @@
                 this.bpx=.50; this.bpy=.50; this.btpx=.50; this.btpy=.50;
                 this.bannType=null; this.bannTick=0; this.bannHuman=true;
                 this.shotActive=false; this.shotStep=0.012; this._pending=null;
+                this.keeperSave=null; this.keeperTick=0;
                 this._raf=null; this._loop=this._loop.bind(this);
                 this._raf=requestAnimationFrame(this._loop);
             }
@@ -480,6 +509,7 @@
                 this.hg=0; this.ag=0; this._vs="kickoff";
                 this.goalTick=0; this.bannType=null; this.bannTick=0;
                 this.shotActive=false; this._pending=null;
+                this.keeperSave=null; this.keeperTick=0;
                 this._form("kickoff");
             }
 
@@ -518,12 +548,15 @@
                 this.bpx=this.pl[idx].px; this.bpy=this.pl[idx].py;
                 this.btpx=humanAttacking?0.91+Math.random()*0.05:0.04+Math.random()*0.05;
                 this.btpy=0.37+Math.random()*0.26;
+                this.keeperSave={px:this.btpx, py:this.btpy, h:!humanAttacking};
+                this.keeperTick=0;
                 this.shotActive=true; this._pending="saved";
             }
 
             clearBanner() {
                 this.bannType=null; this.bannTick=0; this.goalTick=0;
                 this.shotActive=false; this._pending=null;
+                this.keeperSave=null; this.keeperTick=0;
             }
             setState(name) { this._vs=name; this._form(name); }
 
@@ -563,7 +596,10 @@
                         this.shotActive=false;
                         if(this._pending==="goal") this.goalTick=300+Math.floor(Math.random()*30);
                         else if(this._pending==="nogoal") this.bannTick=270+Math.floor(Math.random()*30);
-                        else if(this._pending==="saved") this.bannTick=260+Math.floor(Math.random()*30);
+                        else if(this._pending==="saved") {
+                            this.bannTick=260+Math.floor(Math.random()*30);
+                            this.keeperTick=this.bannTick;
+                        }
                         this._pending=null;
                     } else {
                         this.bpx+=(dx/dist)*this.shotStep;
@@ -574,6 +610,8 @@
                 }
                 if(this.goalTick>0)this.goalTick--;
                 if(this.bannTick>0)this.bannTick--;
+                if(this.keeperTick>0)this.keeperTick--;
+                else if(!this.shotActive && this._pending!=="saved") this.keeperSave=null;
                 this._draw();
             }
 
@@ -634,14 +672,34 @@
                 this._parc(.75,.5,.13,.22,Math.PI*.58,Math.PI*1.42);
                 this._goal3d(true); this._goal3d(false);
                 const bs=this._ps(this.bpx,this.bpy);
-                g.fillStyle="#ffee00"; g.beginPath(); g.arc(bs.x,bs.y,6,0,Math.PI*2); g.fill();
+                this._ball(bs.x,bs.y,6);
                 for(const p of this.pl){
                     const s=this._ps(p.px,p.py);
                     this._fig(s.x,s.y,p.h,(Math.abs(p.px-p.tpx)+Math.abs(p.py-p.tpy))>0.015);
                 }
+                if(this.keeperSave && (this.shotActive || this.keeperTick>0)) {
+                    const ks=this._ps(this.keeperSave.px,this.keeperSave.py);
+                    this._keeper(ks.x,ks.y,this.keeperSave.h);
+                }
                 g.restore(); // banners drawn in screen space (no zoom)
                 if(this.goalTick>0)this._goalBanner(W,H,Math.min(1,this.goalTick/8));
                 else if(this.bannTick>0)this._simBanner(W,H,Math.min(1,this.bannTick/8));
+            }
+
+            _ball(x, y, r) {
+                const g=this.g;
+                g.fillStyle="#f7f4e9";
+                g.beginPath(); g.arc(x,y,r,0,Math.PI*2); g.fill();
+                g.strokeStyle="#111"; g.lineWidth=1;
+                g.beginPath(); g.arc(x,y,r,0,Math.PI*2); g.stroke();
+                g.fillStyle="#111";
+                g.beginPath(); g.arc(x,y,r*.32,0,Math.PI*2); g.fill();
+                for(let i=0;i<5;i++){
+                    const a=-Math.PI/2+i*Math.PI*2/5;
+                    g.beginPath();
+                    g.arc(x+Math.cos(a)*r*.68,y+Math.sin(a)*r*.68,r*.16,0,Math.PI*2);
+                    g.fill();
+                }
             }
 
             _fig(x, y, isHome, run) {
@@ -654,6 +712,17 @@
                 const lw=run?Math.sin(ph*3)*.38:0;
                 g.beginPath(); g.moveTo(x,y); g.lineTo(x-s*(.26+lw),y+s*.44); g.stroke();
                 g.beginPath(); g.moveTo(x,y); g.lineTo(x+s*(.26-lw),y+s*.44); g.stroke();
+            }
+
+            _keeper(x, y, isHome) {
+                const g=this.g,c=isHome?"#ffffff":"#111111",s=18,ph=this.phase;
+                g.strokeStyle=c; g.fillStyle=c; g.lineWidth=2.4;
+                g.beginPath(); g.arc(x,y-s*.70,s*.18,0,Math.PI*2); g.fill();
+                g.beginPath(); g.moveTo(x,y-s*.50); g.lineTo(x,y+s*.10); g.stroke();
+                const dive=Math.sin(ph*4)*s*.08;
+                g.beginPath(); g.moveTo(x-s*.78,y-s*.34+dive); g.lineTo(x+s*.78,y-s*.42-dive); g.stroke();
+                g.beginPath(); g.moveTo(x,y+s*.08); g.lineTo(x-s*.42,y+s*.55); g.stroke();
+                g.beginPath(); g.moveTo(x,y+s*.08); g.lineTo(x+s*.42,y+s*.55); g.stroke();
             }
 
             _simBanner(W, H, alpha) {
@@ -785,7 +854,7 @@
                 const reports = state.last_matches || [];
                 document.getElementById("latestMatch").innerHTML = reports.length
                     ? reports.map(m => {
-                        const events = m.report.filter(l => !isFinanceLine(l) && !isBoringLine(l));
+                        const events = timedReportEvents(m.report);
                         const finances = m.report.filter(l => isFinanceLine(l));
                         return `
                         <article class="report">

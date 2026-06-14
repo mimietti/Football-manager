@@ -538,10 +538,29 @@ tr.player {
 }
 .latest-match ul {
     margin: 8px 0 0;
-    padding-left: 16px;
+    padding-left: 0;
+    list-style: none;
     color: var(--muted);
     font-size: 14px;
     line-height: 1.45;
+}
+.latest-match li {
+    display: grid;
+    grid-template-columns: 46px minmax(0, 1fr);
+    gap: 8px;
+    align-items: baseline;
+}
+.match-minute {
+    display: inline-block;
+    min-width: 38px;
+    padding: 1px 5px;
+    border-radius: 3px;
+    background: rgba(214,199,93,0.18);
+    color: var(--accent);
+    font-family: "Courier New", monospace;
+    font-size: 13px;
+    font-weight: 900;
+    text-align: right;
 }
 .match-finance {
     margin-top: 10px;
