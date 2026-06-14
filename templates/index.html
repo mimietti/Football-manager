@@ -75,6 +75,7 @@
             <div class="match-panel pre-match-actions">
                 <div id="roundLabel" class="round-label"></div>
                 <div class="button-row">
+                    <button id="editSquad" type="button" style="display:none">Edit squad</button>
                     <button id="playRound">Play</button>
                     <button id="endSeason" style="display:none">New Season</button>
                 </div>
@@ -119,6 +120,9 @@
                     <input id="loanAmount" type="number" min="1000" step="1000" value="10000" placeholder="£ amount">
                     <button id="borrowButton">Loan</button>
                     <button id="repayButton">Repay</button>
+                </div>
+                <div class="management-actions">
+                    <button id="continueToMatch" type="button">Continue to match</button>
                 </div>
                 <div id="squadList" class="player-list squad-grid"></div>
             </div>
@@ -424,6 +428,8 @@
             document.getElementById("playRound").disabled = state.season_over || waitingForMatch;
             document.getElementById("endSeason").style.display =
                 state.season_over ? "inline-flex" : "none";
+            document.getElementById("editSquad").style.display =
+                (!state.season_over && state.transfer_window) ? "inline-flex" : "none";
 
             // League table
             document.getElementById("tableDiv").textContent = state.division;
@@ -476,8 +482,20 @@
                     return (order[a.position] ?? 9) - (order[b.position] ?? 9) ||
                         String(a.name).localeCompare(String(b.name));
                 });
+                const groups = [
+                    ["D", "Defenders"],
+                    ["M", "Midfielders"],
+                    ["A", "Attackers"],
+                ];
                 document.getElementById("squadList").innerHTML =
-                    sortedSquad.map(p => playerRow(p, human.name, true)).join("");
+                    groups.map(([pos, label]) => `
+                        <section class="squad-column">
+                            <h3>${label}</h3>
+                            <div class="player-list">
+                                ${sortedSquad.filter(p => p.position === pos).map(p => playerRow(p, human.name, true)).join("")}
+                            </div>
+                        </section>
+                    `).join("");
             }
 
             // Transfer market — only visible after a match
@@ -641,8 +659,18 @@
         document.getElementById("endSeason").addEventListener("click", () =>
             socket.emit("end_season"));
 
+        document.getElementById("editSquad").addEventListener("click", () => {
+            uiPhase = "management";
+            render();
+        });
+
         document.getElementById("closeReport").addEventListener("click", () => {
             uiPhase = "management";
+            render();
+        });
+
+        document.getElementById("continueToMatch").addEventListener("click", () => {
+            uiPhase = "pre";
             render();
         });
 

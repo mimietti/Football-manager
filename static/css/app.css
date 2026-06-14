@@ -18,15 +18,15 @@ body {
     font-family: "Trebuchet MS", "Segoe UI", sans-serif;
 }
 .shell {
-    width: min(1120px, calc(100% - 24px));
+    width: min(1460px, calc(100% - 16px));
     margin: 0 auto;
-    padding: 18px 0 28px;
+    padding: 8px 0 16px;
 }
 .hero {
     position: relative;
     overflow: hidden;
-    min-height: 230px;
-    padding: 24px;
+    min-height: 150px;
+    padding: 14px 18px;
     border: 1px solid var(--line);
     border-radius: 8px;
     background: linear-gradient(180deg, #16462e, #102719);
@@ -52,7 +52,7 @@ body {
 .pitch::after { right: 18px; }
 .hero-content {
     position: relative;
-    min-height: 180px;
+    min-height: 120px;
     display: grid;
     grid-template-columns: minmax(0, 1fr) auto;
     gap: 18px;
@@ -61,7 +61,7 @@ body {
 h1 {
     margin: 0;
     color: #fff7bf;
-    font-size: clamp(34px, 6vw, 68px);
+    font-size: clamp(34px, 4.2vw, 58px);
     line-height: 0.96;
 }
 h2 {
@@ -128,8 +128,8 @@ button:disabled {
 .controls,
 .layout {
     display: grid;
-    gap: 12px;
-    margin-top: 12px;
+    gap: 8px;
+    margin-top: 8px;
 }
 .controls {
     grid-template-columns: repeat(3, minmax(0, 1fr));
@@ -148,10 +148,11 @@ button:disabled {
 .management-layout .finance-actions { order: 2; }
 .management-layout .panel-title-row { order: 3; }
 .management-layout .team-summary { order: 4; }
-.management-layout .squad-grid { order: 5; }
+.management-layout .management-actions { order: 5; }
+.management-layout .squad-grid { order: 6; }
 .panel,
 .match-panel {
-    padding: 16px;
+    padding: 12px;
     border: 1px solid var(--line);
     border-radius: 8px;
     background: var(--panel);
@@ -176,7 +177,7 @@ button:disabled {
     justify-content: space-between;
     gap: 18px;
     align-items: center;
-    margin-top: 12px;
+    margin-top: 8px;
 }
 .pre-match-actions {
     margin-top: 14px;
@@ -192,12 +193,17 @@ button:disabled {
     background: var(--green);
     color: #071b0a;
 }
+.match-panel #editSquad {
+    min-width: 118px;
+    background: rgba(255,255,255,0.07);
+    color: var(--text);
+}
 .match-visual {
-    margin-top: 12px;
+    margin-top: 8px;
 }
 .scoreboard-still {
     position: relative;
-    min-height: 260px;
+    min-height: 210px;
     overflow: hidden;
     border: 1px solid var(--line);
     border-radius: 8px;
@@ -276,8 +282,8 @@ select {
 .team-summary {
     display: grid;
     grid-template-columns: repeat(2, minmax(0, 1fr));
-    gap: 6px;
-    margin-bottom: 10px;
+    gap: 4px 10px;
+    margin-bottom: 8px;
     color: var(--muted);
     font-size: 13px;
 }
@@ -286,26 +292,48 @@ select {
     grid-template-columns: 132px auto auto;
     gap: 8px;
     justify-content: start;
-    margin-bottom: 12px;
+    margin-bottom: 8px;
 }
 .finance-actions input {
     width: 132px;
 }
 .finance-actions button {
-    padding: 9px 10px;
+    padding: 8px 9px;
     border-radius: 8px;
     font-size: 12px;
 }
+.management-actions {
+    display: flex;
+    justify-content: flex-end;
+    margin: 0 0 8px;
+}
+.management-actions button {
+    border-radius: 8px;
+    background: var(--green);
+    color: #071b0a;
+}
 .player-list {
     display: grid;
-    gap: 8px;
+    gap: 6px;
 }
 .squad-grid {
-    grid-template-columns: repeat(2, minmax(0, 1fr));
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+    align-items: start;
+}
+.squad-column {
+    display: grid;
+    gap: 6px;
+}
+.squad-column h3 {
+    margin: 0;
+    color: var(--accent);
+    font-size: 12px;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
 }
 .transfer-inline {
-    margin-bottom: 14px;
-    padding: 12px;
+    margin-bottom: 8px;
+    padding: 10px;
     border: 1px solid rgba(214,199,93,0.22);
     border-radius: 8px;
     background: rgba(214,199,93,0.07);
@@ -313,9 +341,9 @@ select {
 .player-row {
     display: grid;
     grid-template-columns: minmax(0, 1fr) auto;
-    gap: 10px;
+    gap: 8px;
     align-items: center;
-    padding: 9px 10px;
+    padding: 7px 8px;
     border: 1px solid rgba(255,255,255,0.08);
     border-radius: 8px;
     background: rgba(0,0,0,0.16);
@@ -333,7 +361,7 @@ select {
     display: block;
 }
 .player-row span {
-    margin-top: 3px;
+    margin-top: 2px;
     color: var(--muted);
     font-size: 12px;
 }
@@ -352,8 +380,8 @@ select {
     justify-content: flex-end;
 }
 .player-actions button {
-    padding: 7px 10px;
-    font-size: 12px;
+    padding: 6px 8px;
+    font-size: 11px;
 }
 table {
     width: 100%;
@@ -418,8 +446,8 @@ tr.player {
     display: flex;
     flex-wrap: wrap;
     gap: 6px 18px;
-    margin-top: 10px;
-    padding: 8px 14px;
+    margin-top: 8px;
+    padding: 6px 12px;
     border: 1px solid var(--line);
     border-radius: 8px;
     background: var(--panel);
@@ -474,8 +502,8 @@ em.inj {
     vertical-align: middle;
 }
 .pre-match-panel {
-    margin-top: 12px;
-    padding: 16px;
+    margin-top: 8px;
+    padding: 12px;
     border: 1px solid var(--line);
     border-radius: 8px;
     background: var(--panel);
@@ -625,5 +653,11 @@ em.inj {
     }
     .squad-grid {
         grid-template-columns: 1fr;
+    }
+    .management-actions {
+        justify-content: stretch;
+    }
+    .management-actions button {
+        width: 100%;
     }
 }
