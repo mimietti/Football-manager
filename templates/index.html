@@ -121,6 +121,11 @@
                     <button id="repayButton">Repay</button>
                 </div>
                 <div class="management-actions">
+                    <div class="squad-action-bar" aria-label="Squad action">
+                        <button type="button" data-squad-action="lineup">Pick/Bench</button>
+                        <button type="button" data-squad-action="rename">Rename</button>
+                        <button type="button" data-squad-action="sell">Sell</button>
+                    </div>
                     <button id="continueToMatch" type="button">Continue to match</button>
                 </div>
                 <div id="squadList" class="player-list squad-grid"></div>
@@ -137,6 +142,7 @@
         const localSaveKey = "rfm-save:" + {{ username|tojson }};
         let playResponseTimer = null;
         let pendingLineupIn = null;
+        let squadAction = "lineup";
 
         const esc = (v) => String(v ?? "")
             .replaceAll("&", "&amp;").replaceAll("<", "&lt;")
@@ -489,9 +495,9 @@
                 const {tl,tr,bl} = this.C;
                 const pitchW = tr.x - tl.x;   // screen width of pitch
                 const pitchH = bl.y - tl.y;   // screen height of pitch
-                const vw = pitchW * 0.42;      // tight view of the attacking third
+                const vw = pitchW * 0.50;      // tight view with the goal still visible
                 const scale = W / vw;
-                const vx0 = vs==="attack-human" ? tl.x + pitchW*0.55 : tl.x - pitchW*0.04;
+                const vx0 = vs==="attack-human" ? tl.x + pitchW*0.48 : tl.x - pitchW*0.08;
                 const viewH = H / scale;
                 const vy0 = tl.y + (pitchH - viewH) * 0.5;
                 g.setTransform(scale, 0, 0, scale, -vx0*scale, -vy0*scale);
@@ -794,25 +800,15 @@
             }
 
             _goalBanner(W, H, alpha) {
-                const g=this.g,bH=Math.min(H*.26,150);
+                const g=this.g,bH=Math.min(H*.16,90);
                 g.globalAlpha=alpha;
                 g.fillStyle="#bb1111"; g.fillRect(0,0,W,bH);
                 g.fillStyle="#f7f15b";
-                for(let col=0;col<W;col+=22) for(let row=4;row<bH*.62;row+=15)
+                for(let col=0;col<W;col+=22) for(let row=4;row<bH*.82;row+=15)
                     if(((col/22|0)+(row/15|0))%2===0) g.fillRect(col+4,row+2,7,7);
-                g.font="bold "+Math.floor(bH*.50)+"px \"Courier New\"";
+                g.font="bold "+Math.floor(bH*.46)+"px \"Courier New\"";
                 g.textAlign="center"; g.textBaseline="middle"; g.fillStyle="#f7f4e9";
-                g.fillText("GOAL!",W/2,bH*.38);
-                g.fillStyle="#f7f4e9"; g.fillRect(0,bH,W,Math.max(28,bH*.24));
-                const sf=Math.max(18,Math.floor(bH*.18));
-                g.font="bold "+sf+"px \"Courier New\"";
-                const sy=bH+Math.max(20,bH*.17);
-                g.textAlign="left"; g.fillStyle=this.goalHuman?"#1748c7":"#bb1111";
-                g.fillText(this.homeTeam,10,sy);
-                g.fillStyle="#111"; g.textAlign="center"; g.fillText(String(this.hg),W*.42,sy);
-                g.fillStyle=this.goalHuman?"#bb1111":"#1748c7";
-                g.textAlign="left"; g.fillText(this.awayTeam,W*.50,sy);
-                g.fillStyle="#111"; g.textAlign="right"; g.fillText(String(this.ag),W-10,sy);
+                g.fillText("GOAL!",W/2,bH*.52);
                 g.globalAlpha=1;
             }
 
@@ -956,7 +952,7 @@
                                 <span>Skill</span>
                                 <span>Energy</span>
                                 <span>Value</span>
-                                <span></span>
+                                <span>Status</span>
                             </div>
                             <div class="player-list">
                                 ${sortedSquad.filter(p => p.position === pos).map(p => playerRow(p, human.name, true)).join("")}
@@ -974,6 +970,10 @@
                         ? (state.transfer_market || []).map(p => playerRow(p, human?.name || "", false)).join("")
                         : '<p class="muted small">No player available.</p>';
             }
+
+            document.querySelectorAll("[data-squad-action]").forEach(button => {
+                button.classList.toggle("active", button.dataset.squadAction === squadAction);
+            });
 
             applyUiPhase();
         }
@@ -1067,31 +1067,33 @@
             const pc = posClass(player.position);
             const energyHtml = `<em class="energy-value ${energyClass(player.energy)}">${player.energy}/20</em>`;
             if (owned) {
-                const sellDisabled = player.injured || state?.transfer_sold_this_window ? "disabled" : "";
-                let lineupLabel = player.active ? "P" : "Bench";
-                let lineupClass = player.active ? "btn-playing" : "btn-bench";
+                let statusLabel = player.active ? "P" : "Bench";
+                let statusClass = player.active ? "status-playing" : "status-bench";
                 if (pendingLineupIn) {
                     if (player.id === pendingLineupIn.id) {
-                        lineupLabel = "Selected";
-                        lineupClass = "btn-swap";
+                        statusLabel = "Selected";
+                        statusClass = "status-swap";
                     } else if (player.active) {
-                        lineupLabel = `Bench`;
-                        lineupClass = "btn-swap";
+                        statusLabel = "Swap";
+                        statusClass = "status-swap";
                     }
+                } else if (squadAction === "rename") {
+                    statusLabel = "Rename";
+                    statusClass = "status-action";
+                } else if (squadAction === "sell") {
+                    statusLabel = state?.transfer_sold_this_window ? "Sold" : "Sell";
+                    statusClass = player.injured || state?.transfer_sold_this_window ? "status-disabled" : "status-action";
                 }
                 return `
-                <div class="player-row ${player.active ? "active-player" : ""} ${player.injured ? "injured-player" : ""}">
+                <button type="button"
+                    class="player-row player-select ${player.active ? "active-player" : ""} ${player.injured ? "injured-player" : ""}"
+                    data-player-select="${esc(player.id)}" data-team="${esc(teamName)}">
                     <strong class="${pc}">${esc(player.name)}${inj}</strong>
                     <span>${player.skill}</span>
                     <span>${energyHtml}</span>
                     <span>${fmt(player.value)}</span>
-                    <div class="player-actions">
-                        <button data-lineup="${esc(player.id)}" data-team="${esc(teamName)}"
-                            class="${lineupClass}" ${player.injured ? "disabled" : ""}>${esc(lineupLabel)}</button>
-                        <button data-rename-player="${esc(player.id)}" data-team="${esc(teamName)}">Rename</button>
-                        <button data-sell="${esc(player.id)}" data-team="${esc(teamName)}" ${sellDisabled}>Sell</button>
-                    </div>
-                </div>`;
+                    <span class="player-status ${statusClass}">${esc(statusLabel)}</span>
+                </button>`;
             }
             const buyDisabled = state?.transfer_bought_this_window ? "disabled" : "";
             return `
@@ -1212,6 +1214,13 @@
             b.addEventListener("click", () =>
                 socket.emit("set_tactics", { mode: b.dataset.mode })));
 
+        document.querySelectorAll("[data-squad-action]").forEach(b =>
+            b.addEventListener("click", () => {
+                squadAction = b.dataset.squadAction || "lineup";
+                pendingLineupIn = null;
+                render();
+            }));
+
         document.addEventListener("click", e => {
             const teamBtn = e.target.closest("[data-team-index]");
             if (teamBtn) {
@@ -1224,6 +1233,51 @@
             }
             const buy = e.target.closest("[data-buy]");
             if (buy) { socket.emit("buy_player", { team: buy.dataset.team, player_id: buy.dataset.buy }); return; }
+            const playerSelect = e.target.closest("[data-player-select]");
+            if (playerSelect) {
+                const human = (state?.human_teams || [])[0];
+                const player = (human?.squad || []).find(p => p.id === playerSelect.dataset.playerSelect);
+                if (!player) return;
+                if (squadAction === "rename") {
+                    const name = prompt("New player name", player.name);
+                    if (name) socket.emit("rename_player", {
+                        team: playerSelect.dataset.team,
+                        player_id: player.id,
+                        name,
+                    });
+                    return;
+                }
+                if (squadAction === "sell") {
+                    if (player.injured || state?.transfer_sold_this_window) return;
+                    socket.emit("sell_player", { team: playerSelect.dataset.team, player_id: player.id });
+                    return;
+                }
+                if (pendingLineupIn && player.active) {
+                    socket.emit("swap_lineup", {
+                        team: playerSelect.dataset.team,
+                        in_player_id: pendingLineupIn.id,
+                        out_player_id: player.id,
+                    });
+                    pendingLineupIn = null;
+                    return;
+                }
+                if (pendingLineupIn && player.id === pendingLineupIn.id) {
+                    pendingLineupIn = null;
+                    render();
+                    return;
+                }
+                if (!player.active && human?.lineup_size >= 11) {
+                    if (player.injured) return;
+                    pendingLineupIn = { id: player.id, name: player.name };
+                    render();
+                    return;
+                }
+                pendingLineupIn = null;
+                if (!player.injured) {
+                    socket.emit("toggle_lineup", { team: playerSelect.dataset.team, player_id: player.id });
+                }
+                return;
+            }
             const sell = e.target.closest("[data-sell]");
             if (sell) { socket.emit("sell_player", { team: sell.dataset.team, player_id: sell.dataset.sell }); return; }
             const lineup = e.target.closest("[data-lineup]");

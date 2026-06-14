@@ -154,6 +154,9 @@ def test_retro_rename_player_and_team():
     # Old name should be replaced in all_team_names
     assert "My FC" in season.all_team_names
     assert original_team_name not in season.all_team_names
+    table_names = [row["name"] for row in season.to_public_dict()["table"]]
+    assert "My FC" in table_names
+    assert original_team_name not in table_names
 
 
 def test_retro_match_report_reads_like_live_commentary():

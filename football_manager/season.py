@@ -97,6 +97,10 @@ class SeasonState:
     def find_team(self, name: str) -> Team:
         return next(t for t in self.teams if t.name == name)
 
+    def _division_names(self) -> list[str]:
+        start = (self.division - 1) * DIVISION_SIZE
+        return self.all_team_names[start : start + DIVISION_SIZE]
+
     def table(self) -> list[Team]:
         return sorted(
             self.teams,
@@ -149,7 +153,7 @@ class SeasonState:
         BASIC line 4125: v1 = ml + lt (sequential opponents).
         The human team is at division slot index 15 (last); opponents are 0-14.
         """
-        div_names = division_team_names(self.division)
+        div_names = self._division_names()
         human = self.human_teams()[0]
         opponent_names = [n for n in div_names if n != human.name]
         idx = (ml - 1) % len(opponent_names)
@@ -324,7 +328,7 @@ class SeasonState:
 
     def _div_slot(self, team_name: str) -> int:
         """Return 0-15 index of team within its division, or -1 if not found."""
-        div_names = division_team_names(self.division)
+        div_names = self._division_names()
         try:
             return div_names.index(team_name)
         except ValueError:
@@ -362,7 +366,7 @@ class SeasonState:
         BASIC lines 7500-7700: simulate the other 7 matches in the round.
         Uses simple form-based goal generation.
         """
-        div_names = division_team_names(self.division)
+        div_names = self._division_names()
         taken: set[str] = {human_name, human_opp_name}
         available = [n for n in div_names if n not in taken]
         random.shuffle(available)
@@ -573,7 +577,7 @@ class SeasonState:
     # ── Serialisation ────────────────────────────────────────────────────────
 
     def to_public_dict(self) -> dict:
-        div_names = division_team_names(self.division)
+        div_names = self._division_names()
         league_table = []
         for i, name in enumerate(div_names):
             try:

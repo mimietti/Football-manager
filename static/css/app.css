@@ -413,10 +413,27 @@ select {
 }
 .management-actions {
     display: flex;
-    justify-content: flex-end;
+    gap: 8px;
+    align-items: center;
+    justify-content: space-between;
+    flex-wrap: wrap;
     margin: 0 0 8px;
 }
-.management-actions button {
+.squad-action-bar {
+    display: flex;
+    gap: 6px;
+    flex-wrap: wrap;
+}
+.squad-action-bar button {
+    padding: 6px 10px;
+    border-radius: 8px;
+    font-size: 12px;
+}
+.squad-action-bar button.active {
+    background: var(--accent);
+    color: #141207;
+}
+.management-actions > #continueToMatch {
     border-radius: 8px;
     background: var(--green);
     color: #071b0a;
@@ -442,7 +459,7 @@ select {
 }
 .squad-table-head {
     display: grid;
-    grid-template-columns: minmax(116px, 1fr) 42px 64px 92px 158px;
+    grid-template-columns: minmax(116px, 1fr) 42px 64px 92px 74px;
     gap: 6px;
     align-items: center;
     padding: 2px 6px;
@@ -467,7 +484,7 @@ select {
 }
 .player-row {
     display: grid;
-    grid-template-columns: minmax(116px, 1fr) 42px 64px 92px 158px;
+    grid-template-columns: minmax(116px, 1fr) 42px 64px 92px 74px;
     gap: 6px;
     align-items: center;
     padding: 3px 6px;
@@ -477,6 +494,16 @@ select {
     font-family: "Courier New", monospace;
     font-size: 14px;
     line-height: 1.18;
+}
+button.player-row {
+    width: 100%;
+    color: var(--text);
+    cursor: pointer;
+    text-align: left;
+}
+button.player-row:hover {
+    border-color: rgba(214,199,93,0.48);
+    background: rgba(214,199,93,0.08);
 }
 .player-row.active-player {
     border-color: rgba(117,212,131,0.42);
@@ -489,6 +516,32 @@ select {
 .player-row strong,
 .player-row span {
     display: block;
+}
+.player-status {
+    justify-self: end;
+    min-width: 0;
+    padding: 2px 6px;
+    border-radius: 999px;
+    font-size: 12px;
+    font-weight: 900;
+    text-align: center;
+}
+.status-playing {
+    background: rgba(117,212,131,0.18);
+    color: var(--green);
+}
+.status-bench {
+    background: rgba(255,255,255,0.05);
+    color: rgba(245,246,232,0.52);
+}
+.status-swap,
+.status-action {
+    background: rgba(214,199,93,0.18);
+    color: var(--accent);
+}
+.status-disabled {
+    background: rgba(255,255,255,0.04);
+    color: rgba(245,246,232,0.35);
 }
 .player-row span {
     margin-top: 0;
@@ -854,7 +907,12 @@ em.inj {
     .management-actions {
         justify-content: stretch;
     }
-    .management-actions button {
+    .squad-action-bar {
+        display: grid;
+        grid-template-columns: repeat(3, 1fr);
+        width: 100%;
+    }
+    .management-actions > #continueToMatch {
         width: 100%;
     }
 }
