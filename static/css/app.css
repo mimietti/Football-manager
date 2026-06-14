@@ -147,6 +147,21 @@ button:disabled {
     border-radius: 8px;
     background: var(--panel);
 }
+.panel-title-row {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 12px;
+    margin-bottom: 12px;
+}
+.panel-title-row h2 {
+    margin: 0;
+}
+.title-action {
+    padding: 7px 10px;
+    border-radius: 8px;
+    font-size: 12px;
+}
 .match-panel {
     display: flex;
     justify-content: space-between;
@@ -259,9 +274,13 @@ select {
 }
 .finance-actions {
     display: grid;
-    grid-template-columns: minmax(84px, 1fr) auto auto auto;
+    grid-template-columns: 132px auto auto;
     gap: 8px;
+    justify-content: start;
     margin-bottom: 12px;
+}
+.finance-actions input {
+    width: 132px;
 }
 .finance-actions button {
     padding: 9px 10px;
@@ -573,7 +592,11 @@ em.inj {
         justify-content: flex-start;
     }
     .finance-actions {
-        grid-template-columns: 1fr 1fr;
+        grid-template-columns: 132px auto auto;
+    }
+    .panel-title-row {
+        align-items: flex-start;
+        flex-direction: column;
     }
     .team-picker-divs {
         grid-template-columns: repeat(2, 1fr);

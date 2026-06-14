@@ -106,13 +106,15 @@
         <!-- Squad management -->
         <section id="managementLayout" class="layout management-layout" style="display:none">
             <div class="panel">
-                <h2>Squad — <span id="squadTeamName"></span></h2>
+                <div class="panel-title-row">
+                    <h2>Squad — <span id="squadTeamName"></span></h2>
+                    <button id="renameTeamButton" class="title-action" type="button">Rename Club</button>
+                </div>
                 <div id="teamSummary" class="team-summary"></div>
                 <div class="finance-actions">
                     <input id="loanAmount" type="number" min="1000" step="1000" value="10000" placeholder="£ amount">
                     <button id="borrowButton">Loan</button>
                     <button id="repayButton">Repay</button>
-                    <button id="renameTeamButton">Rename Club</button>
                 </div>
                 <div id="transferPanel" class="transfer-inline" style="display:none">
                     <h2>Transfer Window</h2>
