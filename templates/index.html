@@ -497,7 +497,7 @@
                 const pitchH = bl.y - tl.y;   // screen height of pitch
                 const vw = pitchW * 0.50;      // tight view with the goal still visible
                 const scale = W / vw;
-                const vx0 = vs==="attack-human" ? tl.x + pitchW*0.48 : tl.x - pitchW*0.08;
+                const vx0 = vs==="attack-human" ? tl.x + pitchW*0.48 : tl.x - pitchW*0.14;
                 const viewH = H / scale;
                 const vy0 = tl.y + (pitchH - viewH) * 0.5;
                 g.setTransform(scale, 0, 0, scale, -vx0*scale, -vy0*scale);
@@ -690,26 +690,39 @@
             _goal3d(isHome) {
                 const g=this.g; const d=0.075; const gh=13;
                 const py1=0.36,py2=0.64;
-                const pxF=isHome?0:1, pxB=isHome?-d:1+d;
+                const pxF=isHome?0:1;
+                const pxB=isHome?d:1-d;
                 const fl=this._ps(pxF,py1),fr=this._ps(pxF,py2);
                 const bl_=this._ps(pxB,py1),br_=this._ps(pxB,py2);
                 g.save();
                 g.strokeStyle="#ffff00"; g.lineWidth=2.2;
                 g.beginPath();
+                // Front mouth
                 g.moveTo(fl.x,fl.y-gh); g.lineTo(fr.x,fr.y-gh);
                 g.moveTo(fl.x,fl.y-gh); g.lineTo(fl.x,fl.y);
                 g.moveTo(fr.x,fr.y-gh); g.lineTo(fr.x,fr.y);
+                g.moveTo(fl.x,fl.y); g.lineTo(fr.x,fr.y);
+                // Back frame, drawn inside the pitch so both ends stay visible in close-up.
                 g.moveTo(bl_.x,bl_.y-gh); g.lineTo(br_.x,br_.y-gh);
                 g.moveTo(bl_.x,bl_.y-gh); g.lineTo(bl_.x,bl_.y);
                 g.moveTo(br_.x,br_.y-gh); g.lineTo(br_.x,br_.y);
+                g.moveTo(bl_.x,bl_.y); g.lineTo(br_.x,br_.y);
+                // Depth connectors
                 g.moveTo(fl.x,fl.y-gh); g.lineTo(bl_.x,bl_.y-gh);
                 g.moveTo(fr.x,fr.y-gh); g.lineTo(br_.x,br_.y-gh);
                 g.moveTo(fl.x,fl.y); g.lineTo(bl_.x,bl_.y);
                 g.moveTo(fr.x,fr.y); g.lineTo(br_.x,br_.y);
+                // Net ribs
                 for(let i=1;i<4;i++){
                     const t=i/4;
                     g.moveTo(fl.x+(fr.x-fl.x)*t, fl.y+(fr.y-fl.y)*t-gh);
                     g.lineTo(bl_.x+(br_.x-bl_.x)*t, bl_.y+(br_.y-bl_.y)*t-gh);
+                }
+                for(let i=1;i<3;i++){
+                    const yTop=fl.y-gh+(fl.y-(fl.y-gh))*i/3;
+                    const yBack=bl_.y-gh+(bl_.y-(bl_.y-gh))*i/3;
+                    g.moveTo(fl.x,yTop); g.lineTo(bl_.x,yBack);
+                    g.moveTo(fr.x,yTop); g.lineTo(br_.x,yBack);
                 }
                 g.stroke();
                 g.restore();
