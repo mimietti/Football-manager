@@ -133,6 +133,7 @@
         let uiPhase = "pre";
         const localSaveKey = "rfm-save:" + {{ username|tojson }};
         let playResponseTimer = null;
+        let pendingLineupIn = null;
 
         const esc = (v) => String(v ?? "")
             .replaceAll("&", "&amp;").replaceAll("<", "&lt;")
@@ -531,6 +532,17 @@
             const pc = posClass(player.position);
             if (owned) {
                 const sellDisabled = player.injured || state?.transfer_sold_this_window ? "disabled" : "";
+                let lineupLabel = player.active ? "▶ Playing" : "— Bench";
+                let lineupClass = player.active ? "btn-playing" : "btn-bench";
+                if (pendingLineupIn) {
+                    if (player.id === pendingLineupIn.id) {
+                        lineupLabel = "Selected";
+                        lineupClass = "btn-swap";
+                    } else if (player.active) {
+                        lineupLabel = `Bench for ${pendingLineupIn.name}`;
+                        lineupClass = "btn-swap";
+                    }
+                }
                 return `
                 <div class="player-row ${player.active ? "active-player" : ""} ${player.injured ? "injured-player" : ""}">
                     <div>
@@ -540,8 +552,8 @@
                     </div>
                     <div class="player-actions">
                         <button data-lineup="${esc(player.id)}" data-team="${esc(teamName)}"
-                            class="${player.active ? "btn-playing" : "btn-bench"}"
-                            ${player.injured ? "disabled" : ""}>${player.active ? "▶ Playing" : "— Bench"}</button>
+                            class="${lineupClass}"
+                            ${player.injured ? "disabled" : ""}>${esc(lineupLabel)}</button>
                         <button data-rename-player="${esc(player.id)}" data-team="${esc(teamName)}">Rename</button>
                         <button data-sell="${esc(player.id)}" data-team="${esc(teamName)}"
                             ${sellDisabled}>Sell</button>
@@ -674,7 +686,33 @@
             const sell = e.target.closest("[data-sell]");
             if (sell) { socket.emit("sell_player", { team: sell.dataset.team, player_id: sell.dataset.sell }); return; }
             const lineup = e.target.closest("[data-lineup]");
-            if (lineup) { socket.emit("toggle_lineup", { team: lineup.dataset.team, player_id: lineup.dataset.lineup }); return; }
+            if (lineup) {
+                const human = (state?.human_teams || [])[0];
+                const player = (human?.squad || []).find(p => p.id === lineup.dataset.lineup);
+                if (!player) return;
+                if (pendingLineupIn && player.active) {
+                    socket.emit("swap_lineup", {
+                        team: lineup.dataset.team,
+                        in_player_id: pendingLineupIn.id,
+                        out_player_id: player.id,
+                    });
+                    pendingLineupIn = null;
+                    return;
+                }
+                if (pendingLineupIn && player.id === pendingLineupIn.id) {
+                    pendingLineupIn = null;
+                    render();
+                    return;
+                }
+                if (!player.active && human?.lineup_size >= 11) {
+                    pendingLineupIn = { id: player.id, name: player.name };
+                    render();
+                    return;
+                }
+                pendingLineupIn = null;
+                socket.emit("toggle_lineup", { team: lineup.dataset.team, player_id: lineup.dataset.lineup });
+                return;
+            }
             const renameP = e.target.closest("[data-rename-player]");
             if (renameP) {
                 const name = prompt("New player name");
@@ -692,6 +730,7 @@
             saveLocalState(payload);
             const wasWaiting = waitingForMatch;
             clearPlayWait();
+            pendingLineupIn = null;
             state = payload;
             if (wasWaiting && payload.last_matches?.length > 0) {
                 animating = true;
@@ -713,6 +752,7 @@
         });
         socket.on("action_error", payload => {
             clearPlayWait();
+            pendingLineupIn = null;
             uiPhase = inferPhase(state);
             if (state) render();
             alert((payload?.message) || "Action failed.");

@@ -121,6 +121,19 @@ def test_transfer_window_offers_only_one_player_and_limits_actions():
             pass
 
 
+def test_lineup_can_swap_bench_player_for_active_player():
+    season = create_new_season(["Tester"])
+    human = season.human_teams()[0]
+    incoming = next(p for p in human.squad if p.id not in human.lineup_ids and p.injured_weeks == 0)
+    outgoing_id = human.lineup_ids[0]
+
+    season.swap_lineup(human.name, incoming.id, outgoing_id)
+
+    assert incoming.id in human.lineup_ids
+    assert outgoing_id not in human.lineup_ids
+    assert len(human.lineup_ids) == 11
+
+
 def test_retro_skill_level():
     season = create_new_season(["Tester"])
     season.set_skill_level(5)

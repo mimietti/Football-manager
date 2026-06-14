@@ -455,6 +455,11 @@ button.btn-bench {
     background: rgba(255,255,255,0.05);
     color: rgba(245,246,232,0.45);
 }
+button.btn-swap {
+    background: rgba(214,199,93,0.18);
+    border-color: rgba(214,199,93,0.55);
+    color: var(--accent);
+}
 em.inj {
     display: inline-block;
     color: #fff;

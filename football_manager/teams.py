@@ -251,6 +251,23 @@ class Team:
                 raise ValueError("Player is injured")
             self.lineup_ids.append(player_id)
 
+    def swap_lineup(self, in_player_id: str, out_player_id: str) -> None:
+        if in_player_id == out_player_id:
+            raise ValueError("Choose two different players")
+        if out_player_id not in self.lineup_ids:
+            raise ValueError("Choose a player who is currently playing")
+        if in_player_id in self.lineup_ids:
+            raise ValueError("Incoming player is already playing")
+        incoming = next((p for p in self.squad if p.id == in_player_id), None)
+        if not incoming:
+            raise ValueError("Incoming player not found")
+        if incoming.injured_weeks > 0:
+            raise ValueError("Player is injured")
+        self.lineup_ids = [
+            in_player_id if pid == out_player_id else pid
+            for pid in self.lineup_ids
+        ]
+
     def auto_pick_lineup(self) -> None:
         available = sorted(
             [p for p in self.squad if p.injured_weeks == 0],

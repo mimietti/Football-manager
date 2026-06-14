@@ -436,6 +436,9 @@ class SeasonState:
     def toggle_lineup(self, team_name: str, player_id: str) -> None:
         self.find_team(team_name).toggle_lineup(player_id)
 
+    def swap_lineup(self, team_name: str, in_player_id: str, out_player_id: str) -> None:
+        self.find_team(team_name).swap_lineup(in_player_id, out_player_id)
+
     def borrow(self, team_name: str, amount: int) -> None:
         self.find_team(team_name).borrow(amount)
 
