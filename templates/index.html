@@ -466,6 +466,7 @@
                 this.bannType=null; this.bannTick=0; this.bannHuman=true;
                 this.shotActive=false; this.shotStep=0.0055; this._pending=null;
                 this.shotStart=null; this.shotTraceTick=0;
+                this.goalDelayTick=0;
                 this.keeperSave=null; this.keeperTick=0;
                 this._raf=null; this._loop=this._loop.bind(this);
                 this._raf=requestAnimationFrame(this._loop);
@@ -488,9 +489,9 @@
                 const {tl,tr,bl} = this.C;
                 const pitchW = tr.x - tl.x;   // screen width of pitch
                 const pitchH = bl.y - tl.y;   // screen height of pitch
-                const vw = pitchW * 0.62;      // show 62% of pitch width
+                const vw = pitchW * 0.42;      // tight view of the attacking third
                 const scale = W / vw;
-                const vx0 = vs==="attack-human" ? tl.x + pitchW*0.38 : tl.x;
+                const vx0 = vs==="attack-human" ? tl.x + pitchW*0.55 : tl.x - pitchW*0.04;
                 const viewH = H / scale;
                 const vy0 = tl.y + (pitchH - viewH) * 0.5;
                 g.setTransform(scale, 0, 0, scale, -vx0*scale, -vy0*scale);
@@ -511,31 +512,39 @@
                 this.goalTick=0; this.bannType=null; this.bannTick=0;
                 this.shotActive=false; this._pending=null;
                 this.shotStart=null; this.shotTraceTick=0;
+                this.goalDelayTick=0;
                 this.keeperSave=null; this.keeperTick=0;
                 this._form("kickoff");
             }
 
             setScore(h, a) { this.hg=h; this.ag=a; }
 
+            _shotOrigin(attackingRight) {
+                return attackingRight
+                    ? {px:.82+Math.random()*0.06, py:.40+Math.random()*0.22}
+                    : {px:.12+Math.random()*0.06, py:.40+Math.random()*0.22};
+            }
+
             goal(humanScored) {
+                this.setState(humanScored ? "attack-human" : "attack-ai");
                 this.goalHuman=humanScored;
-                this.goalTick=0; this.bannType=null; this.bannTick=0;
-                // Snap ball to attacker's foot, then shoot into net
-                const idx=humanScored?1:2;
-                this.bpx=this.pl[idx].px; this.bpy=this.pl[idx].py;
+                this.goalTick=0; this.goalDelayTick=0; this.bannType=null; this.bannTick=0;
+                // Snap ball near the box, then shoot into net
+                const origin=this._shotOrigin(humanScored);
+                this.bpx=origin.px; this.bpy=origin.py;
                 this.shotStart={px:this.bpx, py:this.bpy};
                 this.shotTraceTick=180;
-                this.btpx=humanScored?0.97+Math.random()*0.04:0.02-Math.random()*0.03;
+                this.btpx=humanScored?0.985+Math.random()*0.02:0.015-Math.random()*0.02;
                 this.btpy=0.38+Math.random()*0.24;
                 this.shotActive=true; this._pending="goal";
             }
 
             noGoal(humanMissed) {
                 this.bannType="nogoal"; this.bannTick=0;
-                this.bannHuman=humanMissed; this.goalTick=0;
-                // Snap ball to attacker, shoot wide or over
-                const idx=humanMissed?1:2;
-                this.bpx=this.pl[idx].px; this.bpy=this.pl[idx].py;
+                this.bannHuman=humanMissed; this.goalTick=0; this.goalDelayTick=0;
+                // Snap ball near the box, shoot wide or over
+                const origin=this._shotOrigin(humanMissed);
+                this.bpx=origin.px; this.bpy=origin.py;
                 this.shotStart={px:this.bpx, py:this.bpy};
                 this.shotTraceTick=180;
                 const r=Math.random();
@@ -548,10 +557,10 @@
 
             saved(humanAttacking) {
                 this.bannType="saved"; this.bannTick=0;
-                this.bannHuman=humanAttacking; this.goalTick=0;
-                // Snap ball to attacker, shoot toward goal — stopped by keeper
-                const idx=humanAttacking?1:2;
-                this.bpx=this.pl[idx].px; this.bpy=this.pl[idx].py;
+                this.bannHuman=humanAttacking; this.goalTick=0; this.goalDelayTick=0;
+                // Snap ball near the box, shoot toward goal - stopped by keeper
+                const origin=this._shotOrigin(humanAttacking);
+                this.bpx=origin.px; this.bpy=origin.py;
                 this.shotStart={px:this.bpx, py:this.bpy};
                 this.shotTraceTick=180;
                 this.btpx=humanAttacking?0.91+Math.random()*0.05:0.04+Math.random()*0.05;
@@ -565,6 +574,7 @@
                 this.bannType=null; this.bannTick=0; this.goalTick=0;
                 this.shotActive=false; this._pending=null;
                 this.shotStart=null; this.shotTraceTick=0;
+                this.goalDelayTick=0;
                 this.keeperSave=null; this.keeperTick=0;
             }
             setState(name) { this._vs=name; this._form(name); }
@@ -573,14 +583,14 @@
                 const F = {
                     kickoff:[{h:[{px:.08,py:.50},{px:.38,py:.48}],a:[{px:.62,py:.32},{px:.68,py:.52},{px:.62,py:.70},{px:.76,py:.44}],b:{px:.50,py:.50}}],
                     "attack-human":[
-                        {h:[{px:.60,py:.48},{px:.74,py:.40}],a:[{px:.52,py:.30},{px:.54,py:.54},{px:.50,py:.72},{px:.58,py:.40}],b:{px:.82,py:.46}},
-                        {h:[{px:.64,py:.44},{px:.78,py:.56}],a:[{px:.48,py:.26},{px:.56,py:.58},{px:.52,py:.72},{px:.62,py:.36}],b:{px:.86,py:.52}},
-                        {h:[{px:.58,py:.53},{px:.70,py:.38}],a:[{px:.50,py:.34},{px:.58,py:.50},{px:.46,py:.66},{px:.64,py:.44}],b:{px:.80,py:.40}},
+                        {h:[{px:.74,py:.52},{px:.86,py:.42}],a:[{px:.70,py:.30},{px:.76,py:.54},{px:.72,py:.72},{px:.90,py:.48}],b:{px:.86,py:.46}},
+                        {h:[{px:.76,py:.44},{px:.88,py:.56}],a:[{px:.70,py:.26},{px:.78,py:.58},{px:.74,py:.72},{px:.91,py:.40}],b:{px:.88,py:.52}},
+                        {h:[{px:.72,py:.58},{px:.84,py:.38}],a:[{px:.68,py:.34},{px:.78,py:.50},{px:.72,py:.66},{px:.90,py:.44}],b:{px:.84,py:.40}},
                     ],
                     "attack-ai":[
-                        {h:[{px:.20,py:.55},{px:.30,py:.46}],a:[{px:.40,py:.28},{px:.48,py:.52},{px:.42,py:.70},{px:.56,py:.40}],b:{px:.32,py:.55}},
-                        {h:[{px:.16,py:.60},{px:.26,py:.44}],a:[{px:.38,py:.24},{px:.50,py:.56},{px:.40,py:.74},{px:.54,py:.36}],b:{px:.28,py:.48}},
-                        {h:[{px:.22,py:.50},{px:.34,py:.58}],a:[{px:.42,py:.32},{px:.46,py:.50},{px:.44,py:.68},{px:.58,py:.42}],b:{px:.34,py:.60}},
+                        {h:[{px:.26,py:.55},{px:.18,py:.46}],a:[{px:.28,py:.28},{px:.22,py:.52},{px:.26,py:.70},{px:.10,py:.48}],b:{px:.16,py:.55}},
+                        {h:[{px:.24,py:.60},{px:.16,py:.44}],a:[{px:.30,py:.24},{px:.22,py:.56},{px:.28,py:.74},{px:.09,py:.40}],b:{px:.14,py:.48}},
+                        {h:[{px:.28,py:.50},{px:.18,py:.58}],a:[{px:.32,py:.32},{px:.22,py:.50},{px:.28,py:.68},{px:.10,py:.44}],b:{px:.16,py:.60}},
                     ],
                     "full-time":[{h:[{px:.40,py:.52},{px:.52,py:.46}],a:[{px:.52,py:.38},{px:.60,py:.54},{px:.54,py:.68},{px:.62,py:.44}],b:{px:.50,py:.50}}],
                 };
@@ -603,7 +613,7 @@
                     if(dist<=this.shotStep) {
                         this.bpx=this.btpx; this.bpy=this.btpy;
                         this.shotActive=false;
-                        if(this._pending==="goal") this.goalTick=300+Math.floor(Math.random()*30);
+                        if(this._pending==="goal") this.goalDelayTick=75;
                         else if(this._pending==="nogoal") this.bannTick=270+Math.floor(Math.random()*30);
                         else if(this._pending==="saved") {
                             this.bannTick=260+Math.floor(Math.random()*30);
@@ -616,6 +626,10 @@
                     }
                 } else {
                     this.bpx+=(this.btpx-this.bpx)*0.13; this.bpy+=(this.btpy-this.bpy)*0.13;
+                }
+                if(this.goalDelayTick>0) {
+                    this.goalDelayTick--;
+                    if(this.goalDelayTick===0) this.goalTick=300+Math.floor(Math.random()*30);
                 }
                 if(this.goalTick>0)this.goalTick--;
                 if(this.bannTick>0)this.bannTick--;
