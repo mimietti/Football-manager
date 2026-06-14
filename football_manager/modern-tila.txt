@@ -1,0 +1,40 @@
+Modern mode erot alkupeäiseen:
+
+1. MAALINTEKO
+
+Hyökkäysten määrä perustuu keskikentän vahvuuseroihin. 
+Mitä vahvempi keskikenttä sen enemmän peli on hyökkäyspäässä. 
+Hyökkäyksen onnistumisessa:  vertaillaan hyökkäyksen ja puolustuksen vahvuuseroa(suurin paino),
+ Energia-tason eroa (toiseksi suurin painoarvo) ja moraalin eroa, jolla pieni painoarvo. 
+
+ Maalinteossa ja onnistuneessa puolustuksessa valitaan ratkaisija. Tämä näkyy otteluselostuksessa.
+Jos tulee maali, niin se on maalintekijä. Jos maalia ei tule, niin se on hyökkäyksen katkaisija.
+ Kolmas satunnainen vaihtoehto on, että laukaus menee ohi jolloin kerrotaan ohi laukaiseen 
+ pelaajan nimi. Mitä korkeampi taito, sitä luultavammin pallo menee maalia kohti jolloin maali
+onnistuu tai tulee torjutuksi.  Oman joukkueen 2Maalintekijä tai hyökkäysen torjuja valitaan painotetulla 
+arvonnalla. Maalintekijä todennäköisimmin hyökkääjä, sitten keskikenttäpelaaja ja 
+vähiten todennäköisesti puolustaja. Taito ja energia lisäävät todennäköisyyttä tulla valituksi.
+
+2. MORAALI 
+Jokaisella pelaajalla on moraali. Se on aluksi satunnainen,
+ keskimäärin kuitenkin sama kuin retro version joukkueen moraali. Alun jälkeen joukkueen
+moraali on pelaajien moraalien keskiarvo pyöristettynä tasalukuun. 
+ Pelaajan moraali paranee 
+ jos hän saa pelata ja huononee jos ei.  Maalin tekeminen tai hyökkäyksen torjunta lisäävät 
+moraalia vielä enemmän. Epäonnistuminen laskee moraalia puolet onnistumiseen verrattuna. 
+
+3. MONINPELI 
+
+Mahdollistetaan kahden pelaajan osallistuminen. Molemmat pelaavat eri joukkueilla. Toinen pelaaja
+ ei voi valita samaa joukkuetta, eikä sillä voi olla samoja pelaajia.  Sarjatilanne tallentuu 
+ pilveen ja peliin voi palata milloin tahansa kirjautumalla sisään omalla käyttäjällä.  Yksinkertainen 
+ salasana tarvitaan tunnistuksessa.  Peli on muuten sama, mutta sisältää myös keskinäiset 
+ ottelut pelaajien välillä. Jos seuraava ottelu on ihmispelaajaa vastaan, niin siitä varoitetaan
+ edellisen ottelun jälkeen ja kokoonpanoa seuraavaan otteluun voi muuttaa vain 24h tuntia.  
+ Tämä koskee molempia pelaajia.  Peli pelataan kun molemmat ovat valmiita tai 24h päästä. 
+ Jos pelaaja ei ole pelissä kun peli pelataan, niin ottelutapahtumat näytetään kun hän palaa 
+ peliin.  Tietysti jos molemmat ovat paikalla ja hyväksyneet kokoonpanon, niin peli pelataan heti. 
+
+
+
+

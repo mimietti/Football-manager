@@ -1,0 +1,129 @@
+<!doctype html>
+<html lang="en">
+<head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>Football Manager — Sign In</title>
+    <link rel="stylesheet" href="/static/css/app.css">
+    <style>
+        .auth-shell {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            min-height: 100vh;
+            padding: 24px;
+        }
+        .auth-card {
+            width: min(420px, 100%);
+            padding: 32px;
+            border: 1px solid rgba(255,255,255,0.12);
+            border-radius: 12px;
+            background: rgba(255,255,255,0.055);
+        }
+        .auth-card h1 {
+            font-size: 28px;
+            margin-bottom: 4px;
+        }
+        .auth-card p {
+            margin: 0 0 24px;
+            font-size: 13px;
+        }
+        .auth-tabs {
+            display: flex;
+            gap: 8px;
+            margin-bottom: 20px;
+        }
+        .auth-tabs button {
+            flex: 1;
+            border-radius: 8px;
+        }
+        .field {
+            margin-bottom: 14px;
+        }
+        .field label {
+            display: block;
+            margin-bottom: 6px;
+            font-size: 12px;
+            font-weight: 800;
+            letter-spacing: 0.06em;
+            text-transform: uppercase;
+            color: rgba(245,246,232,0.72);
+        }
+        .field input {
+            width: 100%;
+        }
+        .auth-submit {
+            width: 100%;
+            margin-top: 8px;
+            border-radius: 8px;
+            background: #75d483;
+            color: #071b0a;
+            font-size: 15px;
+        }
+        .auth-error {
+            margin-bottom: 16px;
+            padding: 10px 14px;
+            border-radius: 8px;
+            background: rgba(224,80,80,0.18);
+            border: 1px solid rgba(224,80,80,0.4);
+            color: #e05050;
+            font-size: 13px;
+        }
+    </style>
+</head>
+<body>
+    <main class="auth-shell">
+        <div class="auth-card">
+            <h1>Football Manager</h1>
+            <p class="muted">Faithful port of the 1982 original by Kevin &amp; John Toms</p>
+
+            {% if error %}
+            <div class="auth-error">{{ error }}</div>
+            {% endif %}
+
+            <div class="auth-tabs">
+                <button id="tabLogin" class="active" onclick="showTab('login')">Sign In</button>
+                <button id="tabRegister" onclick="showTab('register')">Register</button>
+            </div>
+
+            <form id="formLogin" method="post">
+                <input type="hidden" name="action" value="login">
+                <div class="field">
+                    <label>Username</label>
+                    <input type="text" name="username" autocomplete="username" required autofocus>
+                </div>
+                <div class="field">
+                    <label>Password</label>
+                    <input type="password" name="password" autocomplete="current-password" required>
+                </div>
+                <button type="submit" class="auth-submit">Sign In</button>
+            </form>
+
+            <form id="formRegister" method="post" style="display:none">
+                <input type="hidden" name="action" value="register">
+                <div class="field">
+                    <label>Username</label>
+                    <input type="text" name="username" autocomplete="username" minlength="2" maxlength="40" required>
+                </div>
+                <div class="field">
+                    <label>Password (min 4 characters)</label>
+                    <input type="password" name="password" autocomplete="new-password" minlength="4" required>
+                </div>
+                <button type="submit" class="auth-submit">Create Account</button>
+            </form>
+        </div>
+    </main>
+    <script>
+        function showTab(tab) {
+            document.getElementById("formLogin").style.display = tab === "login" ? "" : "none";
+            document.getElementById("formRegister").style.display = tab === "register" ? "" : "none";
+            document.getElementById("tabLogin").classList.toggle("active", tab === "login");
+            document.getElementById("tabRegister").classList.toggle("active", tab === "register");
+        }
+        // If the server returned an error from a register attempt, stay on register tab
+        {% if error and request.form.get('action') == 'register' %}
+        showTab('register');
+        {% endif %}
+    </script>
+</body>
+</html>

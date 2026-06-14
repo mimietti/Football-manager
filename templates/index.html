@@ -1,0 +1,327 @@
+<!doctype html>
+<html lang="en">
+<head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>Retro Football Manager</title>
+    <link rel="stylesheet" href="/static/css/app.css">
+    <script src="https://cdn.socket.io/4.7.5/socket.io.min.js"></script>
+</head>
+<body>
+    <main class="shell">
+        <section class="hero">
+            <div class="pitch"></div>
+            <div class="hero-content">
+                <div>
+                    <h1>Football Manager</h1>
+                    <p id="credit" class="muted"></p>
+                </div>
+                <form id="newSeasonForm" class="new-season">
+                    <label for="managerName">Manager name</label>
+                    <input id="managerName" type="text" maxlength="20" placeholder="Enter your name" value="{{ username }}">
+                    <button type="submit">New Season (Div 4)</button>
+                    <a href="/logout" style="font-size:12px;color:rgba(245,246,232,0.45);text-decoration:none;align-self:center">Sign out</a>
+                </form>
+            </div>
+        </section>
+
+        <!-- Status bar -->
+        <section class="status-bar">
+            <span id="statusDivision"></span>
+            <span id="statusSeason"></span>
+            <span id="statusLeague"></span>
+            <span id="statusCup"></span>
+            <span id="statusSkill"></span>
+        </section>
+
+        <!-- Controls row -->
+        <section class="controls">
+            <div class="panel">
+                <h2>Engine</h2>
+                <div class="button-row">
+                    <button data-mode="retro">Retro</button>
+                    <button data-mode="modern">Modern</button>
+                </div>
+            </div>
+            <div class="panel">
+                <h2>Skill Level</h2>
+                <select id="skillLevel">
+                    <option value="1">1 — Beginner</option>
+                    <option value="2">2 — Novice</option>
+                    <option value="3">3 — Average</option>
+                    <option value="4">4 — Good</option>
+                    <option value="5">5 — Expert</option>
+                    <option value="6">6 — Super Expert</option>
+                    <option value="7">7 — Genius</option>
+                </select>
+            </div>
+            <div class="panel">
+                <h2>Next Match</h2>
+                <div id="nextFixture" class="next-fixture"></div>
+            </div>
+        </section>
+
+        <!-- Play / End season -->
+        <section class="match-panel">
+            <div id="roundLabel" class="round-label"></div>
+            <div class="button-row">
+                <button id="playRound">Play next match</button>
+                <button id="endSeason" style="display:none">New Season →</button>
+            </div>
+        </section>
+
+        <!-- Match report -->
+        <section class="layout">
+            <div class="panel">
+                <h2>Match Report</h2>
+                <div id="latestMatch" class="latest-match">Awaiting kick-off.</div>
+            </div>
+            <div class="panel">
+                <h2>Division <span id="tableDiv"></span> Table</h2>
+                <table id="leagueTable"></table>
+            </div>
+        </section>
+
+        <!-- Squad management -->
+        <section class="layout management-layout">
+            <div class="panel">
+                <h2>Squad — <span id="squadTeamName"></span></h2>
+                <div id="teamSummary" class="team-summary"></div>
+                <div class="finance-actions">
+                    <input id="loanAmount" type="number" min="1000" step="1000" value="10000" placeholder="£ amount">
+                    <button id="borrowButton">Loan</button>
+                    <button id="repayButton">Repay</button>
+                    <button id="renameTeamButton">Rename Club</button>
+                </div>
+                <div id="squadList" class="player-list"></div>
+            </div>
+            <div class="panel">
+                <h2>Transfer Market</h2>
+                <p class="muted small">Original squad members available for signing</p>
+                <div id="transferMarket" class="player-list"></div>
+            </div>
+        </section>
+    </main>
+
+    <script>
+        const socket = io();
+        let state = null;
+
+        const esc = (v) => String(v ?? "")
+            .replaceAll("&", "&amp;").replaceAll("<", "&lt;")
+            .replaceAll(">", "&gt;").replaceAll('"', "&quot;");
+
+        const fmt = (n) => `£${Number(n).toLocaleString()}`;
+
+        function render() {
+            if (!state) return;
+
+            // Status bar
+            document.getElementById("statusDivision").textContent =
+                `Division ${state.division}`;
+            document.getElementById("statusSeason").textContent =
+                `Season ${state.season_number}`;
+            document.getElementById("statusLeague").textContent =
+                `Match ${state.league_match}/${state.total_league_matches}`;
+            const cupText = state.cup_eliminated
+                ? "Cup: Eliminated"
+                : state.cup_round > 0
+                    ? `Cup: Round ${state.cup_round}`
+                    : "Cup: Not started";
+            document.getElementById("statusCup").textContent = cupText;
+            document.getElementById("statusSkill").textContent =
+                `Level ${state.skill_level} — ${esc(state.skill_name)}`;
+
+            document.getElementById("credit").textContent = state.inspiration;
+            document.getElementById("skillLevel").value = String(state.skill_level || 1);
+            document.querySelectorAll("[data-mode]").forEach(
+                b => b.classList.toggle("active", b.dataset.mode === state.mode)
+            );
+
+            // Next fixture
+            const nf = state.next_fixture || {};
+            let nfText = "";
+            if (state.season_over) {
+                nfText = "<em>Season complete!</em>";
+            } else if (nf.type === "cup") {
+                nfText = `<strong>FA Cup Round ${nf.cup_round}</strong><br>vs ${esc(nf.opponent)}`;
+            } else if (nf.type === "league") {
+                nfText = `<strong>League Match ${nf.league_match}</strong><br>vs ${esc(nf.opponent)}`;
+            }
+            document.getElementById("nextFixture").innerHTML = nfText;
+
+            // Round label
+            document.getElementById("roundLabel").textContent = state.season_over
+                ? "Season complete — advance to next season?"
+                : `Division ${state.division} · Match ${state.league_match + 1}`;
+
+            // Play / end-season buttons
+            document.getElementById("playRound").disabled = state.season_over;
+            document.getElementById("endSeason").style.display =
+                state.season_over ? "inline-flex" : "none";
+
+            // League table
+            document.getElementById("tableDiv").textContent = state.division;
+            const tbody = (state.table || []).map((row, i) => `
+                <tr class="${row.is_human ? "player" : ""}">
+                    <td>${i + 1}</td>
+                    <td>${esc(row.name)}</td>
+                    <td>${row.gf}</td>
+                    <td>${row.ga}</td>
+                    <td>${row.gd >= 0 ? "+" : ""}${row.gd}</td>
+                    <td><strong>${row.pts}</strong></td>
+                </tr>`).join("");
+            document.getElementById("leagueTable").innerHTML = `
+                <thead>
+                  <tr><th>#</th><th>Club</th><th>F</th><th>A</th><th>GD</th><th>Pts</th></tr>
+                </thead>
+                <tbody>${tbody}</tbody>`;
+
+            // Match report
+            const reports = state.last_matches || [];
+            function reportLine(line) {
+                const l = String(line ?? "");
+                if (l.startsWith("GOAL")) return `<li class="event-goal">${esc(l)}</li>`;
+                if (l.includes("intercepts") || l.includes("is saved")) return `<li class="event-save">${esc(l)}</li>`;
+                if (l.includes("shoots wide") || l.includes("shoot wide")) return `<li class="event-wide">${esc(l)}</li>`;
+                return `<li>${esc(l)}</li>`;
+            }
+            document.getElementById("latestMatch").innerHTML = reports.length
+                ? reports.map(m => `
+                    <article class="report">
+                        <div class="score">${esc(m.home)} ${m.home_goals} – ${m.away_goals} ${esc(m.away)}</div>
+                        <ul>${m.report.map(reportLine).join("")}</ul>
+                    </article>`).join("")
+                : "Awaiting kick-off.";
+
+            // Squad panel
+            const human = (state.human_teams || [])[0];
+            if (human) {
+                document.getElementById("squadTeamName").textContent = human.name;
+                renderTeamSummary(human);
+                document.getElementById("squadList").innerHTML =
+                    (human.squad || []).map(p => playerRow(p, human.name, true)).join("");
+            }
+
+            // Transfer market
+            document.getElementById("transferMarket").innerHTML =
+                (state.transfer_market || []).map(p => playerRow(p, human?.name || "", false)).join("");
+        }
+
+        function renderTeamSummary(team) {
+            const d2 = team.div_multiplier || 1;
+            document.getElementById("teamSummary").innerHTML = `
+                <div>Cash: ${fmt(team.cash)}</div>
+                <div>Loan: ${fmt(team.loan)}</div>
+                <div>Gate money: ${fmt(team.gate_money)}</div>
+                <div>Wages/wk: ${fmt(team.wage_bill)}</div>
+                <div>Rent/wk: ${fmt(team.ground_rent)}</div>
+                <div>Interest/wk: ${fmt(team.loan_interest)}</div>
+                <div>Loan limit: ${fmt(team.loan_limit)}</div>
+                <div>Squad: ${team.squad_size}/${team.max_squad_size}</div>
+                <div>Morale: ${team.retro_morale}/20</div>
+                <div>Lineup: ${team.lineup_size}/11</div>
+            `;
+        }
+
+        function posLabel(pos) {
+            return pos === "D" ? "DEF" : pos === "M" ? "MID" : "ATK";
+        }
+
+        function playerRow(player, teamName, owned) {
+            const inj = player.injured ? ` <em class="inj">INJ</em>` : "";
+            const moraleStr = player.morale != null ? ` · Morale ${player.morale}/20` : "";
+            const statLine = `${posLabel(player.position)} · Skill ${player.skill} · Energy ${player.energy}/20${moraleStr} · Value ${fmt(player.value)}`;
+            if (owned) {
+                return `
+                <div class="player-row ${player.active ? "active-player" : ""} ${player.injured ? "injured-player" : ""}">
+                    <div>
+                        <strong>${esc(player.name)}${inj}</strong>
+                        <span>${esc(statLine)}</span>
+                    </div>
+                    <div class="player-actions">
+                        <button data-lineup="${esc(player.id)}" data-team="${esc(teamName)}"
+                            ${player.injured ? "disabled" : ""}>${player.active ? "Playing" : "Bench"}</button>
+                        <button data-rename-player="${esc(player.id)}" data-team="${esc(teamName)}">Rename</button>
+                        <button data-sell="${esc(player.id)}" data-team="${esc(teamName)}"
+                            ${player.injured ? "disabled" : ""}>Sell</button>
+                    </div>
+                </div>`;
+            } else {
+                return `
+                <div class="player-row">
+                    <div>
+                        <strong>${esc(player.name)}</strong>
+                        <span>${esc(statLine)}</span>
+                    </div>
+                    <div class="player-actions">
+                        <button data-buy="${esc(player.id)}" data-team="${esc(teamName)}">
+                            Sign ${fmt(player.value)}
+                        </button>
+                    </div>
+                </div>`;
+            }
+        }
+
+        // Event listeners
+        document.getElementById("newSeasonForm").addEventListener("submit", e => {
+            e.preventDefault();
+            const name = document.getElementById("managerName").value.trim() || "Manager";
+            socket.emit("new_season", { managers: name });
+        });
+
+        document.getElementById("playRound").addEventListener("click", () =>
+            socket.emit("play_round"));
+
+        document.getElementById("endSeason").addEventListener("click", () =>
+            socket.emit("end_season"));
+
+        document.getElementById("skillLevel").addEventListener("change", e =>
+            socket.emit("set_skill_level", { level: e.target.value }));
+
+        document.getElementById("borrowButton").addEventListener("click", () => {
+            const team = (state?.human_teams?.[0])?.name || "";
+            const amount = parseInt(document.getElementById("loanAmount").value, 10);
+            socket.emit("borrow", { team, amount });
+        });
+
+        document.getElementById("repayButton").addEventListener("click", () => {
+            const team = (state?.human_teams?.[0])?.name || "";
+            const amount = parseInt(document.getElementById("loanAmount").value, 10);
+            socket.emit("repay", { team, amount });
+        });
+
+        document.getElementById("renameTeamButton").addEventListener("click", () => {
+            const team = (state?.human_teams?.[0])?.name || "";
+            const name = prompt("New club name", team);
+            if (name) socket.emit("rename_team", { team, name });
+        });
+
+        document.querySelectorAll("[data-mode]").forEach(b =>
+            b.addEventListener("click", () =>
+                socket.emit("set_tactics", { mode: b.dataset.mode })));
+
+        document.addEventListener("click", e => {
+            const buy = e.target.closest("[data-buy]");
+            if (buy) { socket.emit("buy_player", { team: buy.dataset.team, player_id: buy.dataset.buy }); return; }
+            const sell = e.target.closest("[data-sell]");
+            if (sell) { socket.emit("sell_player", { team: sell.dataset.team, player_id: sell.dataset.sell }); return; }
+            const lineup = e.target.closest("[data-lineup]");
+            if (lineup) { socket.emit("toggle_lineup", { team: lineup.dataset.team, player_id: lineup.dataset.lineup }); return; }
+            const renameP = e.target.closest("[data-rename-player]");
+            if (renameP) {
+                const name = prompt("New player name");
+                if (name) socket.emit("rename_player", {
+                    team: renameP.dataset.team,
+                    player_id: renameP.dataset.renamePlayer,
+                    name,
+                });
+            }
+        });
+
+        socket.on("connect", () => socket.emit("join", {}));
+        socket.on("state", payload => { state = payload; render(); });
+        socket.on("action_error", payload => alert((payload?.message) || "Action failed."));
+    </script>
+</body>
+</html>
