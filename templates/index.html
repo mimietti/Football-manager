@@ -543,7 +543,7 @@
                 this.bpx=origin.px; this.bpy=origin.py;
                 this.shotStart={px:this.bpx, py:this.bpy};
                 this.shotTraceTick=180;
-                this.btpx=0.86+Math.random()*0.025;
+                this.btpx=0.885+Math.random()*0.02;
                 this.btpy=0.40+Math.random()*0.20;
                 this.shotActive=true; this._pending="goal";
             }
@@ -557,10 +557,10 @@
                 this.shotStart={px:this.bpx, py:this.bpy};
                 this.shotTraceTick=180;
                 const r=Math.random();
-                this.btpx=0.91;
+                this.btpx=0.94;
                 if(r<0.34) this.btpy=0.24+Math.random()*0.08;         // wide of the near post
                 else if(r<0.67) this.btpy=0.68+Math.random()*0.08;   // wide of the far post
-                else { this.btpx=0.88; this.btpy=0.10+Math.random()*0.08; } // over bar
+                else { this.btpx=0.91; this.btpy=0.10+Math.random()*0.08; } // over bar
                 this.shotActive=true; this._pending="nogoal";
             }
 
@@ -572,9 +572,9 @@
                 this.bpx=origin.px; this.bpy=origin.py;
                 this.shotStart={px:this.bpx, py:this.bpy};
                 this.shotTraceTick=180;
-                this.btpx=0.84+Math.random()*0.035;
+                this.btpx=0.86+Math.random()*0.025;
                 this.btpy=0.38+Math.random()*0.24;
-                this.keeperSave={px:this.btpx, py:this.btpy, human:!humanAttacking};
+                this.keeperSave={fromPx:0.88, fromPy:0.50, px:this.btpx, py:this.btpy, human:!humanAttacking};
                 this.keeperTick=0;
                 this.shotActive=true; this._pending="saved";
             }
@@ -727,18 +727,25 @@
 
             _ap(px, py) {
                 const right=this._vs!=="attack-ai";
-                const W=this.W, H=this.H;
+                const r=this._attackRect();
                 const xNorm=right
                     ? (px-.64)/.38
                     : ((1-px)-.64)/.38;
-                const x=Math.max(-.08,Math.min(1.08,xNorm))*W;
-                const y=(.08+py*.84)*H;
+                const x=r.x + Math.max(-.08,Math.min(1.08,xNorm))*r.w;
+                const y=r.y + (.08+py*.84)*r.h;
                 return {x,y};
             }
 
+            _attackRect() {
+                const aspect=1.30;
+                const h=this.H;
+                const w=Math.min(this.W, h*aspect);
+                return {x:(this.W-w)/2, y:0, w, h};
+            }
+
             _attackPoint(x, y) {
-                const W=this.W,H=this.H;
-                return {x:x*W,y:y*H};
+                const r=this._attackRect();
+                return {x:r.x+x*r.w,y:r.y+y*r.h};
             }
 
             _attackLine(points) {
@@ -768,12 +775,12 @@
             _attackGoal() {
                 const g=this.g;
                 const P=(x,y)=>this._attackPoint(x,y);
-                const a=P(.55,.25), b=P(.55,.50);
-                const c=P(.66,.34), d=P(.75,.40), e=P(.75,.65), f=P(.66,.72);
-                const g1=P(.62,.20), g2=P(.72,.32), g3=P(.72,.58), g4=P(.62,.62);
+                const a=P(.53,.28), b=P(.53,.55);
+                const c=P(.62,.22), d=P(.72,.31), e=P(.72,.59), f=P(.62,.70);
+                const g1=P(.58,.31), g2=P(.67,.38), g3=P(.67,.60), g4=P(.58,.61);
                 g.save();
                 g.strokeStyle="#ffff00";
-                g.lineWidth=3;
+                g.lineWidth=Math.max(2.2, this._attackRect().w*0.004);
                 g.lineJoin="round";
                 g.lineCap="round";
                 g.beginPath();
@@ -790,6 +797,29 @@
                 g.moveTo(g2.x,g2.y); g.lineTo(g3.x,g3.y);
                 g.stroke();
                 g.restore();
+            }
+
+            _goalBallInNet() {
+                if(this.goalTick<=0 && this.goalDelayTick<=0) return;
+                const p=this._attackPoint(.66,.51);
+                this._ball(p.x,p.y,7);
+            }
+
+            _keeperSavePoint() {
+                if(!this.keeperSave) return null;
+                if(!this.shotActive || !this.shotStart) {
+                    return {px:this.keeperSave.px, py:this.keeperSave.py};
+                }
+                const sx=this.shotStart.px, sy=this.shotStart.py;
+                const tx=this.btpx, ty=this.btpy;
+                const total=Math.hypot(tx-sx, ty-sy) || 1;
+                const done=Math.hypot(this.bpx-sx, this.bpy-sy);
+                const t=Math.max(0, Math.min(1, done/total));
+                const eased=1-Math.pow(1-t, 2);
+                return {
+                    px:this.keeperSave.fromPx+(this.keeperSave.px-this.keeperSave.fromPx)*eased,
+                    py:this.keeperSave.fromPy+(this.keeperSave.py-this.keeperSave.fromPy)*eased
+                };
             }
 
             _attackShotArc() {
@@ -821,13 +851,11 @@
                 g.lineWidth=3.4;
                 g.lineJoin="round";
                 g.lineCap="round";
-                // Fixed attacking-third camera copied toward the BASIC reference:
-                // the penalty area dominates, with the goal sitting on its right edge.
-                this._attackLine([[.04,.22],[.54,.22],[.88,.94]]);
-                this._attackLine([[.04,.22],[.46,.86],[.88,.94]]);
-                this._attackLine([[.46,.86],[.16,.96]]);
-                this._attackLine([[.39,.35],[.56,.35],[.72,.66],[.52,.67],[.39,.35]]);
-                this._attackCurve([[.22,.51],[.30,.60],[.25,.70]]);
+                // Tight attacking-area camera: penalty area, six-yard box and goal only.
+                this._attackLine([[.05,.23],[.45,.23],[.88,.91]]);
+                this._attackLine([[.05,.23],[.47,.88],[.88,.91]]);
+                this._attackLine([[.47,.88],[.17,.95]]);
+                this._attackLine([[.39,.36],[.55,.36],[.69,.62],[.51,.66],[.39,.36]]);
                 this._attackGoal();
                 this._attackShotArc();
                 const bs=this._ap(this.bpx,this.bpy);
@@ -837,9 +865,11 @@
                     this._fig(s.x,s.y,p.human,(Math.abs(p.px-p.tpx)+Math.abs(p.py-p.tpy))>0.015);
                 }
                 if(this.keeperSave && (this.shotActive || this.keeperTick>0)) {
-                    const ks=this._ap(this.keeperSave.px,this.keeperSave.py);
+                    const kp=this._keeperSavePoint();
+                    const ks=this._ap(kp.px,kp.py);
                     this._keeper(ks.x,ks.y,this.keeperSave.human);
                 }
+                this._goalBallInNet();
                 this._updateOverlay();
             }
 
