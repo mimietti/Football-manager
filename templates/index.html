@@ -775,24 +775,18 @@
             _attackGoal() {
                 const g=this.g;
                 const P=(x,y)=>this._attackPoint(x,y);
-                const a=P(.55,.31), b=P(.55,.56);
-                const c=P(.64,.24), d=P(.73,.34), e=P(.73,.61), f=P(.64,.69);
+                const a=P(.55,.34), b=P(.55,.57);
+                const c=P(.68,.42), d=P(.68,.65);
                 g.save();
                 g.strokeStyle="#ffff00";
-                g.lineWidth=Math.max(2.2, this._attackRect().w*0.004);
+                g.lineWidth=Math.max(2.5, this._attackRect().w*0.0045);
                 g.lineJoin="round";
                 g.lineCap="round";
                 g.beginPath();
-                // BASIC-style open goal: front post, roof, back post and floor.
+                // Keep the first pass unmistakable: two posts and a crossbar only.
                 g.moveTo(a.x,a.y); g.lineTo(b.x,b.y);
-                g.moveTo(a.x,a.y); g.lineTo(c.x,c.y); g.lineTo(d.x,d.y);
-                g.moveTo(b.x,b.y); g.lineTo(f.x,f.y); g.lineTo(e.x,e.y);
-                g.moveTo(d.x,d.y); g.lineTo(e.x,e.y);
-                g.moveTo(c.x,c.y); g.lineTo(f.x,f.y);
-                // One light side rib is enough to imply the net without making a cube.
-                const r1=P(.60,.34), r2=P(.69,.42), r3=P(.69,.58), r4=P(.60,.61);
-                g.moveTo(r1.x,r1.y); g.lineTo(r2.x,r2.y);
-                g.moveTo(r4.x,r4.y); g.lineTo(r3.x,r3.y);
+                g.moveTo(c.x,c.y); g.lineTo(d.x,d.y);
+                g.moveTo(a.x,a.y); g.lineTo(c.x,c.y);
                 g.stroke();
                 g.restore();
             }
