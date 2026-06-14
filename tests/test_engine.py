@@ -87,6 +87,40 @@ def test_retro_finance_actions():
     assert human.cash == 6000
 
 
+def test_transfer_window_offers_only_one_player_and_limits_actions():
+    season = create_new_season(["Tester"])
+    season.play_round()
+    human = season.human_teams()[0]
+
+    public_market = season.to_public_dict()["transfer_market"]
+    assert len(public_market) == 1
+
+    human.cash = public_market[0]["value"] * 2
+    season.buy_player(human.name, public_market[0]["id"])
+    assert season.to_public_dict()["transfer_market"] == []
+
+    other_market_player = next((p for p in season.transfer_market if p.id != public_market[0]["id"]), None)
+    if other_market_player:
+        try:
+            season.buy_player(human.name, other_market_player.id)
+            assert False, "second buy should fail"
+        except ValueError:
+            pass
+
+    sellable = next(p for p in human.squad if p.id not in human.lineup_ids)
+    original_value = sellable.value
+    season.sell_player(human.name, sellable.id)
+    assert sellable.value == original_value
+
+    another_sellable = next((p for p in human.squad if p.id not in human.lineup_ids), None)
+    if another_sellable:
+        try:
+            season.sell_player(human.name, another_sellable.id)
+            assert False, "second sell should fail"
+        except ValueError:
+            pass
+
+
 def test_retro_skill_level():
     season = create_new_season(["Tester"])
     season.set_skill_level(5)

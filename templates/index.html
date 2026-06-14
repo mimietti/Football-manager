@@ -42,7 +42,7 @@
         </section>
 
         <!-- Controls row -->
-        <section class="controls">
+        <section id="setupControls" class="controls">
             <div class="panel">
                 <h2>Engine</h2>
                 <div class="button-row">
@@ -72,32 +72,39 @@
         <section id="preMatchPanel" class="pre-match-panel" style="display:none">
             <h2>Pre-Match</h2>
             <div id="preMatchContent"></div>
+            <div class="match-panel pre-match-actions">
+                <div id="roundLabel" class="round-label"></div>
+                <div class="button-row">
+                    <button id="playRound">Play</button>
+                    <button id="endSeason" style="display:none">New Season</button>
+                </div>
+            </div>
         </section>
 
-        <!-- Play / End season -->
-        <section class="match-panel">
-            <div id="roundLabel" class="round-label"></div>
-            <div class="button-row">
-                <button id="playRound">Play next match</button>
-                <button id="endSeason" style="display:none">New Season →</button>
+        <!-- Match visualisation -->
+        <section id="matchVisual" class="match-visual" style="display:none">
+            <div class="scoreboard-still">
+                <div class="pitch-lines"></div>
+                <div id="visualFixture" class="visual-fixture"></div>
             </div>
         </section>
 
         <!-- Match report -->
-        <section class="layout">
-            <div class="panel">
+        <section id="reportLayout" class="layout" style="display:none">
+            <div id="reportPanel" class="panel">
                 <h2>Match Report</h2>
                 <div id="latestMatch" class="latest-match">Awaiting kick-off.</div>
                 <div id="otherMatches"></div>
+                <button id="closeReport" class="close-report" type="button" style="display:none">Close report</button>
             </div>
-            <div class="panel">
+            <div id="tablePanel" class="panel">
                 <h2>Division <span id="tableDiv"></span> Table</h2>
                 <table id="leagueTable"></table>
             </div>
         </section>
 
         <!-- Squad management -->
-        <section class="layout management-layout">
+        <section id="managementLayout" class="layout management-layout" style="display:none">
             <div class="panel">
                 <h2>Squad — <span id="squadTeamName"></span></h2>
                 <div id="teamSummary" class="team-summary"></div>
@@ -107,12 +114,11 @@
                     <button id="repayButton">Repay</button>
                     <button id="renameTeamButton">Rename Club</button>
                 </div>
-                <div id="squadList" class="player-list"></div>
-            </div>
-            <div class="panel" id="transferPanel" style="display:none">
-                <h2>Transfer Window</h2>
-                <p class="muted small">Available until next match</p>
-                <div id="transferMarket" class="player-list"></div>
+                <div id="transferPanel" class="transfer-inline" style="display:none">
+                    <h2>Transfer Window</h2>
+                    <div id="transferMarket" class="player-list"></div>
+                </div>
+                <div id="squadList" class="player-list squad-grid"></div>
             </div>
         </section>
     </main>
@@ -122,6 +128,7 @@
         let state = null;
         let waitingForMatch = false;
         let animating = false;
+        let uiPhase = "pre";
 
         const esc = (v) => String(v ?? "")
             .replaceAll("&", "&amp;").replaceAll("<", "&lt;")
@@ -130,6 +137,26 @@
         const fmt = (n) => `£${Number(n).toLocaleString()}`;
 
         const delay = (ms) => new Promise(r => setTimeout(r, ms));
+
+        function inferPhase(payload) {
+            if (payload?.transfer_window && payload?.last_matches?.length) return "report";
+            return "pre";
+        }
+
+        function applyUiPhase() {
+            if (!state) return;
+            const phase = uiPhase;
+            document.getElementById("setupControls").style.display = phase === "pre" ? "" : "none";
+            document.getElementById("preMatchPanel").style.display = phase === "pre" ? "" : "none";
+            document.getElementById("matchVisual").style.display = phase === "playing" ? "" : "none";
+            document.getElementById("reportLayout").style.display =
+                (phase === "playing" || phase === "report") ? "" : "none";
+            document.getElementById("reportLayout").classList.toggle("live-report", phase === "playing");
+            document.getElementById("tablePanel").style.display = phase === "report" ? "" : "none";
+            document.getElementById("closeReport").style.display =
+                (phase === "report" && state.transfer_window) ? "inline-flex" : "none";
+            document.getElementById("managementLayout").style.display = phase === "management" ? "" : "none";
+        }
 
         function reportLine(line) {
             const l = String(line ?? "");
@@ -150,8 +177,11 @@
         function renderPreMatch() {
             const pm = state?.pre_match;
             const panel = document.getElementById("preMatchPanel");
-            if (!pm || state?.season_over) { panel.style.display = "none"; return; }
-            panel.style.display = "";
+            if (state?.season_over) {
+                document.getElementById("preMatchContent").innerHTML = "<p>Season complete.</p>";
+                return;
+            }
+            if (!pm) { panel.style.display = "none"; return; }
             const humanName = state.human_teams?.[0]?.name ?? "";
             const rows = [
                 ["Energy",   pm.human.energy,   pm.ai.energy],
@@ -198,34 +228,86 @@
                 <table class="other-matches-table"><tbody>${rows}</tbody></table>`;
         }
 
+        function isFinanceLine(l) {
+            return l.startsWith("Gate receipts") || l.startsWith("Weekly costs");
+        }
+
+        function financeHtml(lines) {
+            if (!lines.length) return "";
+            let html = '<div class="match-finance">';
+            lines.forEach(f => {
+                if (f.startsWith("Weekly costs")) {
+                    html += `<h4>Weekly costs</h4><p>${esc(f.replace(/^Weekly costs\s*[—\-]+\s*/, ""))}</p>`;
+                } else {
+                    html += `<p>${esc(f)}</p>`;
+                }
+            });
+            return html + "</div>";
+        }
+
         async function animateMatchReport(matches) {
             const container = document.getElementById("latestMatch");
             container.innerHTML = "";
 
             for (const m of matches) {
+                let curHome = 0, curAway = 0;
+
                 const article = document.createElement("article");
                 article.className = "report";
                 container.appendChild(article);
 
+                // Score starts at 0–0, visible immediately
                 const scoreEl = document.createElement("div");
                 scoreEl.className = "score";
-                scoreEl.style.visibility = "hidden";
-                scoreEl.textContent = `${m.home} ${m.home_goals} – ${m.away_goals} ${m.away}`;
+                scoreEl.textContent = `${m.home} 0 – 0 ${m.away}`;
                 article.appendChild(scoreEl);
 
                 const ul = document.createElement("ul");
                 article.appendChild(ul);
 
+                const financeLines = [];
+
                 for (const line of m.report) {
                     const l = String(line ?? "");
+
+                    // Collect finance lines separately — don't animate them
+                    if (isFinanceLine(l)) { financeLines.push(l); continue; }
+
                     const isFinal = l.startsWith("Final score:");
 
-                    if (isFinal) {
-                        await delay(1000);
-                        scoreEl.style.visibility = "visible";
+                    // Update live score from GOAL lines (modern mode): "GOAL — Name! (1–0)"
+                    if (l.startsWith("GOAL")) {
+                        const sg = l.match(/\((\d+)[–\-](\d+)\)/);
+                        if (sg) {
+                            curHome = parseInt(sg[1]);
+                            curAway = parseInt(sg[2]);
+                            scoreEl.textContent = `${m.home} ${curHome} – ${curAway} ${m.away}`;
+                        }
                     }
 
-                    await delay(500);
+                    // Update score from "Highlights:" line (retro mode): "Highlights: York City 2, Blackpool 0."
+                    if (l.startsWith("Highlights:")) {
+                        l.replace(/^Highlights:\s*/, "").replace(/\.$/, "").split(", ").forEach(part => {
+                            const sp = part.lastIndexOf(" ");
+                            const name = part.substring(0, sp);
+                            const g = parseInt(part.substring(sp + 1));
+                            if (!isNaN(g)) {
+                                if (name === m.home) curHome = g;
+                                else if (name === m.away) curAway = g;
+                            }
+                        });
+                        scoreEl.textContent = `${m.home} ${curHome} – ${curAway} ${m.away}`;
+                    }
+
+                    // On "Final score:" confirm totals match and add a brief pause
+                    if (isFinal) {
+                        curHome = m.home_goals;
+                        curAway = m.away_goals;
+                        scoreEl.textContent = `${m.home} ${curHome} – ${curAway} ${m.away}`;
+                        await delay(800);
+                    } else {
+                        await delay(500);
+                    }
 
                     const li = document.createElement("li");
                     const cls = reportLineClass(l);
@@ -233,6 +315,11 @@
                     li.textContent = l;
                     ul.appendChild(li);
                     li.scrollIntoView({ behavior: "smooth", block: "nearest" });
+                }
+
+                // Finance summary below events
+                if (financeLines.length) {
+                    article.insertAdjacentHTML("beforeend", financeHtml(financeLines));
                 }
             }
 
@@ -275,6 +362,7 @@
                 nfText = `<strong>League Match ${nf.league_match}</strong><br>vs ${esc(nf.opponent)}`;
             }
             document.getElementById("nextFixture").innerHTML = nfText;
+            document.getElementById("visualFixture").textContent = nfText.replace(/<[^>]*>/g, " ");
 
             // Round label
             document.getElementById("roundLabel").textContent = state.season_over
@@ -306,16 +394,23 @@
             // Match report
             const reports = state.last_matches || [];
             document.getElementById("latestMatch").innerHTML = reports.length
-                ? reports.map(m => `
+                ? reports.map(m => {
+                    const events = m.report.filter(l => !isFinanceLine(l));
+                    const finances = m.report.filter(l => isFinanceLine(l));
+                    return `
                     <article class="report">
                         <div class="score">${esc(m.home)} ${m.home_goals} – ${m.away_goals} ${esc(m.away)}</div>
-                        <ul>${m.report.map(reportLine).join("")}</ul>
-                    </article>`).join("")
+                        <ul>${events.map(reportLine).join("")}</ul>
+                        ${financeHtml(finances)}
+                    </article>`;
+                }).join("")
                 : "Awaiting kick-off.";
 
             // Other matches (only when not mid-animation)
-            if (!animating) {
+            if (!animating && uiPhase === "report") {
                 renderOtherMatches(state.other_matches || [], state.division);
+            } else if (uiPhase !== "report") {
+                document.getElementById("otherMatches").innerHTML = "";
             }
 
             renderPreMatch();
@@ -325,8 +420,13 @@
             if (human) {
                 document.getElementById("squadTeamName").textContent = human.name;
                 renderTeamSummary(human);
+                const sortedSquad = [...(human.squad || [])].sort((a, b) => {
+                    const order = { D: 0, M: 1, A: 2 };
+                    return (order[a.position] ?? 9) - (order[b.position] ?? 9) ||
+                        String(a.name).localeCompare(String(b.name));
+                });
                 document.getElementById("squadList").innerHTML =
-                    (human.squad || []).map(p => playerRow(p, human.name, true)).join("");
+                    sortedSquad.map(p => playerRow(p, human.name, true)).join("");
             }
 
             // Transfer market — only visible after a match
@@ -334,8 +434,12 @@
             transferPanel.style.display = state.transfer_window ? "" : "none";
             if (state.transfer_window) {
                 document.getElementById("transferMarket").innerHTML =
-                    (state.transfer_market || []).map(p => playerRow(p, human?.name || "", false)).join("");
+                    (state.transfer_market || []).length
+                        ? (state.transfer_market || []).map(p => playerRow(p, human?.name || "", false)).join("")
+                        : '<p class="muted small">No player available.</p>';
             }
+
+            applyUiPhase();
         }
 
         function renderTeamSummary(team) {
@@ -369,6 +473,7 @@
             const statLine2 = `${moraleStr}Value ${fmt(player.value)}`;
             const pc = posClass(player.position);
             if (owned) {
+                const sellDisabled = player.injured || state?.transfer_sold_this_window ? "disabled" : "";
                 return `
                 <div class="player-row ${player.active ? "active-player" : ""} ${player.injured ? "injured-player" : ""}">
                     <div>
@@ -382,10 +487,11 @@
                             ${player.injured ? "disabled" : ""}>${player.active ? "▶ Playing" : "— Bench"}</button>
                         <button data-rename-player="${esc(player.id)}" data-team="${esc(teamName)}">Rename</button>
                         <button data-sell="${esc(player.id)}" data-team="${esc(teamName)}"
-                            ${player.injured ? "disabled" : ""}>Sell</button>
+                            ${sellDisabled}>Sell</button>
                     </div>
                 </div>`;
             } else {
+                const buyDisabled = state?.transfer_bought_this_window ? "disabled" : "";
                 return `
                 <div class="player-row">
                     <div>
@@ -394,7 +500,7 @@
                         <span>${esc(statLine2)}</span>
                     </div>
                     <div class="player-actions">
-                        <button data-buy="${esc(player.id)}" data-team="${esc(teamName)}">
+                        <button data-buy="${esc(player.id)}" data-team="${esc(teamName)}" ${buyDisabled}>
                             Sign ${fmt(player.value)}
                         </button>
                     </div>
@@ -450,11 +556,18 @@
 
         document.getElementById("playRound").addEventListener("click", () => {
             waitingForMatch = true;
+            uiPhase = "playing";
+            applyUiPhase();
             socket.emit("play_round");
         });
 
         document.getElementById("endSeason").addEventListener("click", () =>
             socket.emit("end_season"));
+
+        document.getElementById("closeReport").addEventListener("click", () => {
+            uiPhase = "management";
+            render();
+        });
 
         document.getElementById("skillLevel").addEventListener("change", e =>
             socket.emit("set_skill_level", { level: e.target.value }));
@@ -512,14 +625,21 @@
             const wasWaiting = waitingForMatch;
             waitingForMatch = false;
             state = payload;
-            render();
             if (wasWaiting && payload.last_matches?.length > 0) {
                 animating = true;
+                uiPhase = "playing";
+            } else if (!(uiPhase === "management" && payload.transfer_window)) {
+                uiPhase = inferPhase(payload);
+            }
+            render();
+            if (wasWaiting && payload.last_matches?.length > 0) {
+                applyUiPhase();
                 document.getElementById("playRound").disabled = true;
                 document.getElementById("otherMatches").innerHTML = "";
                 animateMatchReport(payload.last_matches).then(() => {
                     animating = false;
-                    renderOtherMatches(payload.other_matches || [], payload.division);
+                    uiPhase = "report";
+                    render();
                 });
             }
         });

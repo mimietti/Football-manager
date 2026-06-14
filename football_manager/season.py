@@ -76,6 +76,9 @@ class SeasonState:
     last_human_matches: list[MatchResult] = field(default_factory=list)
     last_other_matches: list[dict] = field(default_factory=list)
     transfer_market: list[Player] = field(default_factory=list)
+    transfer_offer_id: str | None = None
+    transfer_bought_this_window: bool = False
+    transfer_sold_this_window: bool = False
     season_number: int = 0
     transfer_window: bool = False   # opens after each match, closes when next match starts
     # cup replay flag (set when a cup match ends level)
@@ -159,6 +162,9 @@ class SeasonState:
             return self.last_human_matches
 
         self.transfer_window = False   # close window while match is being played
+        self.transfer_offer_id = None
+        self.transfer_bought_this_window = False
+        self.transfer_sold_this_window = False
         self.last_other_matches = []   # cleared each round; only populated for league
         lc, cup_round_next, ml_next = self._next_lc()
 
@@ -291,7 +297,17 @@ class SeasonState:
 
         self.last_human_matches = human_results
         self.transfer_window = True    # open window after match
+        self._pick_transfer_offer()
         return human_results
+
+    def _pick_transfer_offer(self) -> None:
+        self.transfer_offer_id = random.choice(self.transfer_market).id if self.transfer_market else None
+
+    def _current_transfer_offer(self) -> Player | None:
+        offer_id = getattr(self, "transfer_offer_id", None)
+        if not offer_id:
+            return None
+        return next((p for p in self.transfer_market if p.id == offer_id), None)
 
     # ── Cup prize money ───────────────────────────────────────────────────────
 
@@ -390,10 +406,12 @@ class SeasonState:
     def buy_player(self, team_name: str, player_id: str) -> None:
         if not self.transfer_window:
             raise ValueError("Transfer window is closed — play a match first.")
+        if getattr(self, "transfer_bought_this_window", False):
+            raise ValueError("You can buy only one player this round.")
         team = self.find_team(team_name)
-        player = next((p for p in self.transfer_market if p.id == player_id), None)
-        if not player:
-            raise ValueError("Player not found in transfer market")
+        player = self._current_transfer_offer()
+        if not player or player.id != player_id:
+            raise ValueError("That player is not available this round.")
         if team.cash < player.value:
             raise ValueError(
                 f"Not enough cash — need £{player.value:,}, have £{team.cash:,}."
@@ -402,14 +420,18 @@ class SeasonState:
             raise ValueError(f"Squad full (max {MAX_SQUAD_SIZE} players).")
         team.buy(player)
         self.transfer_market = [p for p in self.transfer_market if p.id != player_id]
+        self.transfer_offer_id = None
+        self.transfer_bought_this_window = True
 
     def sell_player(self, team_name: str, player_id: str) -> None:
         if not self.transfer_window:
             raise ValueError("Transfer window is closed — play a match first.")
+        if getattr(self, "transfer_sold_this_window", False):
+            raise ValueError("You can sell only one player this round.")
         team = self.find_team(team_name)
         sold = team.sell(player_id)
-        sold.value = max(1000, round(sold.value * 0.9))
         self.transfer_market.append(sold)
+        self.transfer_sold_this_window = True
 
     def toggle_lineup(self, team_name: str, player_id: str) -> None:
         self.find_team(team_name).toggle_lineup(player_id)
@@ -485,6 +507,10 @@ class SeasonState:
         self.retro_fa = 0
         self.retro_cup_round = 0
         self.season_number += 1
+        self.transfer_window = False
+        self.transfer_offer_id = None
+        self.transfer_bought_this_window = False
+        self.transfer_sold_this_window = False
 
         # Reset league stats for all teams
         self.div_pts = [0] * DIVISION_SIZE
@@ -570,6 +596,9 @@ class SeasonState:
         league_table.sort(key=lambda x: (x["pts"], x["gd"], x["gf"]), reverse=True)
 
         next_fixture = self.next_fixture_description()
+        if self.transfer_window and not getattr(self, "transfer_bought_this_window", False):
+            if not self._current_transfer_offer() and self.transfer_market:
+                self._pick_transfer_offer()
 
         level_name = LEVEL_NAMES[self.skill_level - 1] if 1 <= self.skill_level <= 7 else ""
         return {
@@ -593,8 +622,14 @@ class SeasonState:
             "table": league_table,
             "last_matches": [m.to_dict() for m in self.last_human_matches],
             "other_matches": self.last_other_matches,
-            "transfer_market": [p.to_dict(False) for p in self.transfer_market],
+            "transfer_market": (
+                [self._current_transfer_offer().to_dict(False)]
+                if self.transfer_window and self._current_transfer_offer()
+                else []
+            ),
             "transfer_window": self.transfer_window,
+            "transfer_bought_this_window": getattr(self, "transfer_bought_this_window", False),
+            "transfer_sold_this_window": getattr(self, "transfer_sold_this_window", False),
             "inspiration": "Faithful port of the 1982 Football Manager by Kevin & John Toms.",
         }
 
