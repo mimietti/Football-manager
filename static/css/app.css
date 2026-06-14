@@ -65,7 +65,7 @@ h1 {
     line-height: 0.96;
 }
 h2 {
-    margin: 0 0 12px;
+    margin: 0 0 8px;
     color: #fff2a8;
     font-size: 16px;
     letter-spacing: 0.06em;
@@ -534,20 +534,20 @@ tr.player {
 }
 .score {
     color: #fff8c7;
-    font-size: 26px;
+    font-size: 22px;
     font-weight: 900;
     text-align: center;
 }
 .latest-match ul {
-    margin: 12px 0 0;
-    padding-left: 18px;
+    margin: 8px 0 0;
+    padding-left: 16px;
     color: var(--muted);
-    font-size: 16px;
-    line-height: 1.55;
+    font-size: 14px;
+    line-height: 1.45;
 }
 .match-finance {
-    margin-top: 14px;
-    padding: 14px 18px;
+    margin-top: 10px;
+    padding: 10px 14px;
     border-top: 0;
     border-radius: 4px;
     background:
@@ -555,17 +555,17 @@ tr.player {
         #cfd3c6;
     color: #d82222;
     font-family: "Courier New", monospace;
-    font-size: 24px;
+    font-size: 18px;
     font-weight: 900;
     line-height: 1.18;
 }
 .match-finance h4 {
     display: inline-block;
-    margin: 0 0 12px;
-    padding: 0 8px;
+    margin: 0 0 8px;
+    padding: 0 6px;
     background: #d82222;
     color: #f7f15b;
-    font-size: 24px;
+    font-size: 18px;
     font-weight: 900;
     text-transform: uppercase;
     letter-spacing: 0.04em;
@@ -719,7 +719,7 @@ em.inj {
     border-color: #d2ca20;
 }
 .other-matches-title {
-    margin: 16px 0 8px;
+    margin: 10px 0 4px;
     color: var(--accent);
     font-size: 12px;
     letter-spacing: 0.08em;
@@ -729,18 +729,19 @@ em.inj {
 }
 .other-matches-table {
     width: 100%;
-    font-size: 15px;
+    font-size: 13px;
     font-family: "Courier New", monospace;
 }
 .other-matches-table td {
-    padding: 3px 6px;
+    padding: 2px 4px;
     border: none;
+    white-space: nowrap;
 }
 .other-matches-table td.om-score {
     text-align: center;
     color: var(--text);
     font-weight: 700;
-    width: 52px;
+    width: 68px;
 }
 .other-matches-table td.om-win { color: var(--green); }
 .other-matches-table td.om-draw { color: var(--accent); }
