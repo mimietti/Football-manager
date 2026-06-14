@@ -436,6 +436,7 @@
                 ];
                 this.bpx=.50; this.bpy=.50; this.btpx=.50; this.btpy=.50;
                 this.bannType=null; this.bannTick=0; this.bannHuman=true;
+                this.shotActive=false; this.shotStep=0.012; this._pending=null;
                 this._raf=null; this._loop=this._loop.bind(this);
                 this._raf=requestAnimationFrame(this._loop);
             }
@@ -478,6 +479,7 @@
                 this.homeTeam=home; this.awayTeam=away;
                 this.hg=0; this.ag=0; this._vs="kickoff";
                 this.goalTick=0; this.bannType=null; this.bannTick=0;
+                this.shotActive=false; this._pending=null;
                 this._form("kickoff");
             }
 
@@ -485,30 +487,44 @@
 
             goal(humanScored) {
                 this.goalHuman=humanScored;
-                this.goalTick=300+Math.floor(Math.random()*30);
-                this.bannType=null; this.bannTick=0;
-                this.btpx=humanScored?0.94+Math.random()*0.04:0.02+Math.random()*0.04;
+                this.goalTick=0; this.bannType=null; this.bannTick=0;
+                // Snap ball to attacker's foot, then shoot into net
+                const idx=humanScored?1:2;
+                this.bpx=this.pl[idx].px; this.bpy=this.pl[idx].py;
+                this.btpx=humanScored?0.97+Math.random()*0.04:0.02-Math.random()*0.03;
                 this.btpy=0.38+Math.random()*0.24;
+                this.shotActive=true; this._pending="goal";
             }
 
             noGoal(humanMissed) {
-                this.bannType="nogoal"; this.bannTick=270+Math.floor(Math.random()*30);
+                this.bannType="nogoal"; this.bannTick=0;
                 this.bannHuman=humanMissed; this.goalTick=0;
+                // Snap ball to attacker, shoot wide or over
+                const idx=humanMissed?1:2;
+                this.bpx=this.pl[idx].px; this.bpy=this.pl[idx].py;
                 const r=Math.random();
-                this.btpx=humanMissed?0.98:0.02;
-                this.btpy=r<0.33?0.03:r<0.66?0.06+Math.random()*0.12:0.82+Math.random()*0.14;
+                this.btpx=humanMissed?0.97:0.03;
+                if(r<0.34) this.btpy=0.24+Math.random()*0.10;         // just above top post
+                else if(r<0.67) this.btpy=0.68+Math.random()*0.10;   // just below bottom post
+                else { this.btpx=humanMissed?0.96:0.04; this.btpy=0.08+Math.random()*0.12; } // over bar
+                this.shotActive=true; this._pending="nogoal";
             }
 
             saved(humanAttacking) {
-                this.bannType="saved"; this.bannTick=260+Math.floor(Math.random()*30);
+                this.bannType="saved"; this.bannTick=0;
                 this.bannHuman=humanAttacking; this.goalTick=0;
-                const r=Math.random();
-                if(r<0.40){this.btpx=humanAttacking?0.76:0.24;this.btpy=0.40+Math.random()*0.20;}
-                else if(r<0.70){this.btpx=humanAttacking?0.92:0.08;this.btpy=0.03;}
-                else{this.btpx=humanAttacking?0.84:0.16;this.btpy=0.10+Math.random()*0.70;}
+                // Snap ball to attacker, shoot toward goal — stopped by keeper
+                const idx=humanAttacking?1:2;
+                this.bpx=this.pl[idx].px; this.bpy=this.pl[idx].py;
+                this.btpx=humanAttacking?0.91+Math.random()*0.05:0.04+Math.random()*0.05;
+                this.btpy=0.37+Math.random()*0.26;
+                this.shotActive=true; this._pending="saved";
             }
 
-            clearBanner() { this.bannType=null; this.bannTick=0; this.goalTick=0; }
+            clearBanner() {
+                this.bannType=null; this.bannTick=0; this.goalTick=0;
+                this.shotActive=false; this._pending=null;
+            }
             setState(name) { this._vs=name; this._form(name); }
 
             _form(name) {
@@ -538,7 +554,24 @@
                 this.phase=(t*0.003)%(Math.PI*2);
                 const sp=0.07;
                 for(const p of this.pl){p.px+=(p.tpx-p.px)*sp;p.py+=(p.tpy-p.py)*sp;}
-                this.bpx+=(this.btpx-this.bpx)*0.13; this.bpy+=(this.btpy-this.bpy)*0.13;
+                if(this.shotActive) {
+                    // Ball travels in a straight line — banner fires when it arrives
+                    const dx=this.btpx-this.bpx, dy=this.btpy-this.bpy;
+                    const dist=Math.sqrt(dx*dx+dy*dy);
+                    if(dist<=this.shotStep) {
+                        this.bpx=this.btpx; this.bpy=this.btpy;
+                        this.shotActive=false;
+                        if(this._pending==="goal") this.goalTick=300+Math.floor(Math.random()*30);
+                        else if(this._pending==="nogoal") this.bannTick=270+Math.floor(Math.random()*30);
+                        else if(this._pending==="saved") this.bannTick=260+Math.floor(Math.random()*30);
+                        this._pending=null;
+                    } else {
+                        this.bpx+=(dx/dist)*this.shotStep;
+                        this.bpy+=(dy/dist)*this.shotStep;
+                    }
+                } else {
+                    this.bpx+=(this.btpx-this.bpx)*0.13; this.bpy+=(this.btpy-this.bpy)*0.13;
+                }
                 if(this.goalTick>0)this.goalTick--;
                 if(this.bannTick>0)this.bannTick--;
                 this._draw();
@@ -601,7 +634,7 @@
                 this._parc(.75,.5,.13,.22,Math.PI*.58,Math.PI*1.42);
                 this._goal3d(true); this._goal3d(false);
                 const bs=this._ps(this.bpx,this.bpy);
-                g.fillStyle="#ffee00"; g.beginPath(); g.arc(bs.x,bs.y,4,0,Math.PI*2); g.fill();
+                g.fillStyle="#ffee00"; g.beginPath(); g.arc(bs.x,bs.y,6,0,Math.PI*2); g.fill();
                 for(const p of this.pl){
                     const s=this._ps(p.px,p.py);
                     this._fig(s.x,s.y,p.h,(Math.abs(p.px-p.tpx)+Math.abs(p.py-p.tpy))>0.015);

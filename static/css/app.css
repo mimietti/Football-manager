@@ -546,30 +546,29 @@ tr.player {
 .match-finance {
     margin-top: 10px;
     padding: 10px 14px;
-    border-top: 0;
     border-radius: 4px;
-    background:
-        repeating-linear-gradient(0deg, rgba(0,0,0,0.055) 0 2px, transparent 2px 4px),
-        #cfd3c6;
-    color: #d82222;
+    background: rgba(0,0,0,0.28);
+    border: 1px solid var(--line);
+    color: var(--muted);
     font-family: "Courier New", monospace;
-    font-size: 18px;
-    font-weight: 900;
-    line-height: 1.18;
+    font-size: 16px;
+    font-weight: 600;
+    line-height: 1.45;
 }
 .match-finance h4 {
     display: inline-block;
     margin: 0 0 8px;
-    padding: 0 6px;
-    background: #d82222;
-    color: #f7f15b;
-    font-size: 18px;
+    padding: 2px 8px;
+    background: var(--red);
+    color: var(--accent);
+    font-size: 14px;
     font-weight: 900;
     text-transform: uppercase;
-    letter-spacing: 0.04em;
+    letter-spacing: 0.06em;
+    border-radius: 2px;
 }
 .match-finance p {
-    margin: 4px 0;
+    margin: 3px 0;
 }
 .latest-match li.event-goal {
     color: var(--green);
@@ -645,17 +644,15 @@ em.inj {
 .pre-match-panel {
     margin-top: 8px;
     padding: 14px;
-    border: 1px solid rgba(245,246,232,0.26);
+    border: 1px solid var(--line);
     border-radius: 8px;
-    background:
-        repeating-linear-gradient(0deg, rgba(0,0,0,0.055) 0 2px, transparent 2px 4px),
-        #cfd3c6;
-    color: #151515;
+    background: var(--panel);
+    color: var(--text);
 }
 .pre-match-panel h2 {
-    color: #d82222;
+    color: var(--accent);
     font-family: "Courier New", monospace;
-    font-size: 24px;
+    font-size: 22px;
     text-align: center;
     letter-spacing: 0.08em;
 }
@@ -676,39 +673,41 @@ em.inj {
 }
 .prematch-table th:first-child,
 .prematch-table td:first-child { text-align: left; }
-.prematch-table th.pm-human,
-.prematch-table th.pm-ai { color: #d82222; }
-.pm-label { color: #151515; }
-.pm-human { color: #1748c7; }
-.pm-ai { color: #d82222; }
+.prematch-table th.pm-human { color: var(--green); }
+.prematch-table th.pm-ai { color: var(--red); }
+.pm-label { color: var(--muted); }
+.pm-human { color: var(--green); }
+.pm-ai { color: var(--red); }
 .pm-stronger { font-weight: 900; }
-.pm-weaker { opacity: 0.7; }
+.pm-weaker { opacity: 0.55; }
 .pm-picked {
     width: min(860px, 100%);
-    margin: 4px auto 0;
+    margin: 10px auto 0;
     font-family: "Courier New", monospace;
-    font-size: clamp(20px, 2vw, 30px);
-    font-weight: 900;
-    color: #f7f4e9;
-    letter-spacing: 0.04em;
+    font-size: clamp(14px, 1.4vw, 18px);
+    font-weight: 700;
+    color: var(--accent);
+    letter-spacing: 0.06em;
 }
 .pm-picked span {
     display: inline-block;
-    padding: 0 10px;
-    background: #111;
+    padding: 3px 12px;
+    background: rgba(214,199,93,0.1);
+    border: 1px solid rgba(214,199,93,0.35);
+    border-radius: 3px;
 }
 .pre-match-panel .match-panel {
     width: min(860px, 100%);
-    margin: 18px auto 0;
+    margin: 14px auto 0;
     padding: 0;
     border: 0;
     background: transparent;
-    color: #151515;
+    color: var(--text);
 }
 .pre-match-panel .round-label {
-    color: #1748c7;
+    color: var(--muted);
     font-family: "Courier New", monospace;
-    font-size: 20px;
+    font-size: 16px;
 }
 .pre-match-panel #editSquad,
 .pre-match-panel #endSeason {
