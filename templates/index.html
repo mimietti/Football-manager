@@ -725,9 +725,14 @@
 
             _draw() {
                 const {g,W,H}=this;
+                const goalBannerH=this.goalTick>0 ? this._goalBannerHeight(H) : 0;
                 g.fillStyle="#00bb00"; g.fillRect(0,0,W,H);
-                // Save identity, apply zoom for pitch drawing
                 g.save();
+                if(goalBannerH>0) {
+                    g.translate(0,goalBannerH);
+                    g.scale(1,(H-goalBannerH)/H);
+                }
+                // Save identity, apply zoom for pitch drawing
                 this._setView(g);
                 g.strokeStyle="#ffff00"; g.lineWidth=1.5;
                 const {tl,tr,bl,br}=this.C;
@@ -752,7 +757,7 @@
                     const ks=this._ps(this.keeperSave.px,this.keeperSave.py);
                     this._keeper(ks.x,ks.y,this.keeperSave.h);
                 }
-                g.restore(); // banners drawn in screen space (no zoom)
+                g.restore(); // banners drawn in screen space
                 if(this.goalTick>0)this._goalBanner(W,H,Math.min(1,this.goalTick/8));
                 else if(this.bannTick>0)this._simBanner(W,H,Math.min(1,this.bannTick/8));
             }
@@ -807,16 +812,46 @@
                 g.fillText(text,W/2,bY+bH/2); g.globalAlpha=1;
             }
 
+            _goalBannerHeight(H) {
+                return Math.min(H*.24,126);
+            }
+
             _goalBanner(W, H, alpha) {
-                const g=this.g,bH=Math.min(H*.16,90);
+                const g=this.g,bH=this._goalBannerHeight(H);
                 g.globalAlpha=alpha;
                 g.fillStyle="#bb1111"; g.fillRect(0,0,W,bH);
                 g.fillStyle="#f7f15b";
+                g.fillRect(W*.12,0,W*.76,bH);
+                g.fillStyle="#bb1111";
+                const blockW=Math.max(34,bH*.62);
+                const y1=bH*.18, y2=bH*.82;
+                const x0=W*.18;
+                const gap=blockW*.35;
+                const letters=[
+                    [x0,[[0,0,1,0],[0,0,0,1],[0,1,1,1],[0,1,0,2],[0,2,1,2]]],
+                    [x0+blockW+gap,[[0,0,1,0],[0,0,0,2],[1,0,1,2],[0,2,1,2]]],
+                    [x0+(blockW+gap)*2,[[0,0,0,2],[1,0,1,2],[0,1,1,1]]],
+                    [x0+(blockW+gap)*3,[[0,0,0,2],[0,2,1,2]]],
+                ];
+                g.lineWidth=Math.max(8,bH*.18);
+                g.lineCap="square";
+                for(const [lx,lines] of letters) {
+                    g.beginPath();
+                    for(const seg of lines) {
+                        const [xA,yA,xB,yB]=seg;
+                        g.moveTo(lx+xA*blockW,y1+(yA/2)*(y2-y1));
+                        g.lineTo(lx+xB*blockW,y1+(yB/2)*(y2-y1));
+                    }
+                    g.stroke();
+                }
+                g.beginPath();
+                const ex=x0+(blockW+gap)*4+blockW*.35;
+                g.moveTo(ex,y1); g.lineTo(ex,y2*.72);
+                g.stroke();
+                g.fillRect(ex-g.lineWidth/2,y2-g.lineWidth/2,g.lineWidth,g.lineWidth);
+                g.fillStyle="#f7f15b";
                 for(let col=0;col<W;col+=22) for(let row=4;row<bH*.82;row+=15)
-                    if(((col/22|0)+(row/15|0))%2===0) g.fillRect(col+4,row+2,7,7);
-                g.font="bold "+Math.floor(bH*.46)+"px \"Courier New\"";
-                g.textAlign="center"; g.textBaseline="middle"; g.fillStyle="#f7f4e9";
-                g.fillText("GOAL!",W/2,bH*.52);
+                    if(col<W*.11||col>W*.89) g.fillRect(col+4,row+2,7,7);
                 g.globalAlpha=1;
             }
 
