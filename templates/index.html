@@ -775,8 +775,8 @@
             _attackGoal() {
                 const g=this.g;
                 const P=(x,y)=>this._attackPoint(x,y);
-                const a=P(.55,.34), b=P(.55,.57);
-                const c=P(.68,.42), d=P(.68,.65);
+                const a=P(.44,.26), b=P(.44,.36);
+                const c=P(.54,.26), d=P(.54,.36);
                 g.save();
                 g.strokeStyle="#ffff00";
                 g.lineWidth=Math.max(2.5, this._attackRect().w*0.0045);
@@ -847,7 +847,7 @@
                 this._attackLine([[.05,.23],[.45,.23],[.88,.91]]);
                 this._attackLine([[.05,.23],[.47,.88],[.88,.91]]);
                 this._attackLine([[.47,.88],[.17,.95]]);
-                this._attackLine([[.39,.36],[.55,.36],[.69,.62],[.51,.66],[.39,.36]]);
+                this._attackLine([[.39,.36],[.55,.36],[.69,.58],[.51,.546],[.39,.36]]);
                 this._attackGoal();
                 this._attackShotArc();
                 const bs=this._ap(this.bpx,this.bpy);
