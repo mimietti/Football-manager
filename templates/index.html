@@ -775,25 +775,27 @@
             _attackGoal() {
                 const g=this.g;
                 const P=(x,y)=>this._attackPoint(x,y);
-                const a=P(.44,.26), b=P(.44,.36);
-                const c=P(.54,.26), d=P(.54,.36);
+                const leftTop = P(.78,.90);
+                const leftBottom = P(.78,.95);
+                const rightTop = P(.88,.91);
+                const rightBottom = P(.88,.98);
                 g.save();
                 g.strokeStyle="#ffff00";
                 g.lineWidth=Math.max(2.5, this._attackRect().w*0.0045);
                 g.lineJoin="round";
                 g.lineCap="round";
                 g.beginPath();
-                // Keep the first pass unmistakable: two posts and a crossbar only.
-                g.moveTo(a.x,a.y); g.lineTo(b.x,b.y);
-                g.moveTo(c.x,c.y); g.lineTo(d.x,d.y);
-                g.moveTo(a.x,a.y); g.lineTo(c.x,c.y);
+                // Simple goal posts and crossbar on the back line.
+                g.moveTo(leftTop.x,leftTop.y); g.lineTo(rightTop.x,rightTop.y);
+                g.moveTo(leftTop.x,leftTop.y); g.lineTo(leftBottom.x,leftBottom.y);
+                g.moveTo(rightTop.x,rightTop.y); g.lineTo(rightBottom.x,rightBottom.y);
                 g.stroke();
                 g.restore();
             }
 
             _goalBallInNet() {
                 if(this.goalTick<=0 && this.goalDelayTick<=0) return;
-                const p=this._attackPoint(.66,.51);
+                const p=this._attackPoint(.83,.93);
                 this._ball(p.x,p.y,7);
             }
 
@@ -846,8 +848,7 @@
                 // Tight attacking-area camera: penalty area, six-yard box and goal only.
                 this._attackLine([[.05,.23],[.45,.23],[.88,.91]]);
                 this._attackLine([[.05,.23],[.47,.88],[.88,.91]]);
-                this._attackLine([[.47,.88],[.17,.95]]);
-                this._attackLine([[.39,.36],[.55,.36],[.69,.58],[.51,.546],[.39,.36]]);
+                this._attackLine([[.39,.36],[.55,.36],[.80,.90],[.47,.88],[.39,.36]]);
                 this._attackGoal();
                 this._attackShotArc();
                 const bs=this._ap(this.bpx,this.bpy);
