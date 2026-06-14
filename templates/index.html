@@ -106,6 +106,10 @@
         <!-- Squad management -->
         <section id="managementLayout" class="layout management-layout" style="display:none">
             <div class="panel">
+                <div id="transferPanel" class="transfer-inline" style="display:none">
+                    <h2>Transfer Window</h2>
+                    <div id="transferMarket" class="player-list"></div>
+                </div>
                 <div class="panel-title-row">
                     <h2>Squad — <span id="squadTeamName"></span></h2>
                     <button id="renameTeamButton" class="title-action" type="button">Rename Club</button>
@@ -115,10 +119,6 @@
                     <input id="loanAmount" type="number" min="1000" step="1000" value="10000" placeholder="£ amount">
                     <button id="borrowButton">Loan</button>
                     <button id="repayButton">Repay</button>
-                </div>
-                <div id="transferPanel" class="transfer-inline" style="display:none">
-                    <h2>Transfer Window</h2>
-                    <div id="transferMarket" class="player-list"></div>
                 </div>
                 <div id="squadList" class="player-list squad-grid"></div>
             </div>
