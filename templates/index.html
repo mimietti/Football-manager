@@ -389,6 +389,7 @@
                 const humanIsHome = m.home === humanName;
                 const viz = ensureViz();
                 viz.reset(m.home, m.away);
+                await delay(1200);
                 const aiCol = viz.aiColor;
 
                 const shirtSvg = (fill, stroke) =>
@@ -769,7 +770,7 @@
                 this._pendingResult=null; this._pendingKeeper=null;
                 this._hideOverlay();
             }
-            setState(name) { this._vs=name; this._form(name); }
+            setState(name) { this._vs=name; this._form(name); this.bpx=this.btpx; this.bpy=this.btpy; }
 
             _form(name) {
                 const F = {
@@ -805,7 +806,7 @@
                     // Phase 1: slow dribble — dribbler player tracks the ball
                     this._moveOffBall();
                     const dribIdx=this.dribblerIdx;
-                    const dribOscil=Math.max(0,Math.sin(this.phase*4))*0.008;
+                    const dribOscil=Math.max(0,Math.sin(this.phase*8))*0.007;
                     const fwd=this._vs==="attack-ai"?-dribOscil:dribOscil;
                     if(this.pl[dribIdx]){this.pl[dribIdx].tpx=this.bpx-fwd;this.pl[dribIdx].tpy=this.bpy;this.pl[dribIdx].px=this.bpx-fwd;this.pl[dribIdx].py=this.bpy;}
                     const dx=this.dribbleTarget.px-this.bpx, dy=this.dribbleTarget.py-this.bpy;
@@ -842,7 +843,7 @@
                 } else if(this.kickTick>0) {
                     this._moveOffBall();
                     const dribIdx=this.shooterIdx;
-                    const dribOscil=Math.max(0,Math.sin(this.phase*4))*0.008;
+                    const dribOscil=Math.max(0,Math.sin(this.phase*8))*0.007;
                     const fwd=this._vs==="attack-ai"?-dribOscil:dribOscil;
                     if(this.pl[dribIdx]){this.pl[dribIdx].tpx=this.bpx-fwd;this.pl[dribIdx].tpy=this.bpy;this.pl[dribIdx].px=this.bpx-fwd;this.pl[dribIdx].py=this.bpy;}
                     this.kickTick--;
@@ -866,7 +867,7 @@
                         this.bpy+=(dy/dist)*this.shotStep;
                     }
                 } else {
-                    this.bpx+=(this.btpx-this.bpx)*0.13; this.bpy+=(this.btpy-this.bpy)*0.13;
+                    this.bpx+=(this.btpx-this.bpx)*0.07; this.bpy+=(this.btpy-this.bpy)*0.07;
                 }
                 if(this.goalDelayTick>0) {
                     this.goalDelayTick--;
