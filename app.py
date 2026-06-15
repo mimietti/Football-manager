@@ -304,7 +304,7 @@ def handle_buy_player(data=None):
     try:
         season.buy_player(str(data.get("team") or ""), str(data.get("player_id") or ""))
     except ValueError as e:
-        emit("action_error", {"message": str(e)})
+        emit("action_error", {"message": str(e), "action": "buy_player"})
         return
     _broadcast(uid, season)
 

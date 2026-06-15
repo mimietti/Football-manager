@@ -671,6 +671,16 @@ select {
     margin-bottom: 6px;
     letter-spacing: 0.04em;
 }
+.transfer-message {
+    margin: 0 0 6px;
+    padding: 5px 8px;
+    border: 1px solid rgba(255, 92, 92, 0.55);
+    border-radius: 4px;
+    background: rgba(255, 92, 92, 0.12);
+    color: #ff7070;
+    font-size: 14px;
+    font-weight: 900;
+}
 .player-row {
     display: grid;
     grid-template-columns: minmax(90px, 1.15fr) 86px 62px 88px 62px 48px;

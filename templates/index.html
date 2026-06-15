@@ -125,6 +125,7 @@
                 <div class="management-top">
                     <div id="transferPanel" class="transfer-inline" style="display:none">
                         <h2>Transfer Window</h2>
+                        <div id="transferMessage" class="transfer-message" role="status" aria-live="polite"></div>
                         <div id="transferMarket" class="player-list"></div>
                     </div>
                     <div id="loanBlock" class="loan-block">
@@ -162,6 +163,7 @@
         let pendingLineupIn = null;
         let squadAction = "lineup";
         let restartingSeason = false;
+        let transferMessage = "";
 
         const esc = (v) => String(v ?? "")
             .replaceAll("&", "&amp;").replaceAll("<", "&lt;")
@@ -1388,6 +1390,9 @@
             transferPanel.style.display = state.transfer_window ? "" : "none";
             document.querySelector(".management-top")?.classList.toggle("no-transfer", !state.transfer_window);
             if (state.transfer_window) {
+                const messageEl = document.getElementById("transferMessage");
+                messageEl.textContent = transferMessage;
+                messageEl.style.display = transferMessage ? "" : "none";
                 document.getElementById("transferMarket").innerHTML =
                     (state.transfer_market || []).length
                         ? (state.transfer_market || []).map(p => playerRow(p, human?.name || "", false)).join("")
@@ -1736,7 +1741,11 @@
                 return;
             }
             const buy = e.target.closest("[data-buy]");
-            if (buy) { socket.emit("buy_player", { team: buy.dataset.team, player_id: buy.dataset.buy }); return; }
+            if (buy) {
+                transferMessage = "";
+                socket.emit("buy_player", { team: buy.dataset.team, player_id: buy.dataset.buy });
+                return;
+            }
             const playerSelect = e.target.closest("[data-player-select]");
             if (playerSelect) {
                 const human = (state?.human_teams || [])[0];
@@ -1834,6 +1843,7 @@
             const wasWaiting = waitingForMatch;
             clearPlayWait();
             pendingLineupIn = null;
+            transferMessage = "";
             state = payload;
             if (wasWaiting && payload.last_matches?.length > 0) {
                 animating = true;
@@ -1856,9 +1866,16 @@
         socket.on("action_error", payload => {
             clearPlayWait();
             pendingLineupIn = null;
+            const message = (payload?.message) || "Action failed.";
+            if (payload?.action === "buy_player" && state?.transfer_window) {
+                transferMessage = message;
+                uiPhase = "management";
+                if (state) render();
+                return;
+            }
             uiPhase = inferPhase(state);
             if (state) render();
-            alert((payload?.message) || "Action failed.");
+            alert(message);
         });
     </script>
 </body>
