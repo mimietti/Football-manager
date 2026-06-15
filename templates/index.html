@@ -135,7 +135,6 @@
                 <div id="teamSummary" class="team-summary"></div>
                 <div class="management-actions">
                     <div class="squad-action-bar" aria-label="Squad action">
-                        <button type="button" data-squad-action="lineup">Pick/Bench</button>
                         <button type="button" data-squad-action="sell">Sell</button>
                     </div>
                     <button id="continueToMatch" type="button">Continue to match</button>
@@ -288,7 +287,7 @@
                         </tr>`).join("")}
                     </tbody>
                 </table>
-                <div class="pm-picked"><span>PLAYERS PICKED=${pm.human.lineup_size}</span></div>`;
+                <div class="pm-picked"><span>PLAYERS PICKED=${pm.human.lineup_size}</span><span class="pm-formation">${squadFormation(state.human_teams?.[0]?.squad || [])}</span></div>`;
         }
 
         function renderOtherMatches(matches, division) {
@@ -1140,13 +1139,15 @@
             if (human) {
                 document.getElementById("squadTeamName").textContent = human.name;
                 const lineupBadge = document.getElementById("lineupBadge");
-                lineupBadge.textContent = `Lineup ${human.lineup_size}/11`;
+                lineupBadge.textContent = `${squadFormation(human.squad)} · ${human.lineup_size}/11`;
                 lineupBadge.className = `lineup-badge ${human.lineup_size === 11 ? "lineup-ok" : "lineup-bad"}`;
                 renderTeamSummary(human);
                 const sortedSquad = [...(human.squad || [])].sort((a, b) => {
                     const order = { D: 0, M: 1, A: 2 };
-                    return (order[a.position] ?? 9) - (order[b.position] ?? 9) ||
-                        String(a.name).localeCompare(String(b.name));
+                    const posDiff = (order[a.position] ?? 9) - (order[b.position] ?? 9);
+                    if (posDiff !== 0) return posDiff;
+                    if (a.active !== b.active) return a.active ? -1 : 1;
+                    return String(a.name).localeCompare(String(b.name));
                 });
                 const groups = [
                     ["D", "Defenders"],
@@ -1159,7 +1160,7 @@
                             <h3>${label}</h3>
                             <div class="squad-table-head">
                                 <span>Name</span>
-                                <span>Skill</span>
+                                <span>D/M/A</span>
                                 <span>Energy</span>
                                 <span>Value</span>
                                 <span>Status</span>
@@ -1271,12 +1272,27 @@
             }
         }
 
+        function squadFormation(squad) {
+            const d = (squad || []).filter(p => p.active && p.position === "D").length;
+            const m = (squad || []).filter(p => p.active && p.position === "M").length;
+            const a = (squad || []).filter(p => p.active && p.position === "A").length;
+            return `${d}-${m}-${a}`;
+        }
+
+        function skillProfile(player) {
+            if (player.skill_d || player.skill_m || player.skill_a) {
+                return `D${player.skill_d} M${player.skill_m} A${player.skill_a}`;
+            }
+            return `${player.skill}`;
+        }
+
         function playerRow(player, teamName, owned) {
             const inj = player.injured ? ` <em class="inj">INJ</em>` : "";
             const pc = posClass(player.position);
             const energyHtml = `<em class="energy-value ${energyClass(player.energy)}">${player.energy}/20</em>`;
+            const skills = skillProfile(player);
             if (owned) {
-                let statusLabel = player.active ? "P" : "Bench";
+                let statusLabel = player.active ? player.position : "Bench";
                 let statusClass = player.active ? "status-playing" : "status-bench";
                 if (pendingLineupIn) {
                     if (player.id === pendingLineupIn.id) {
@@ -1295,7 +1311,7 @@
                     class="player-row player-select ${player.active ? "active-player" : ""} ${player.injured ? "injured-player" : ""}"
                     data-player-select="${esc(player.id)}" data-team="${esc(teamName)}">
                     <strong class="${pc}">${esc(player.name)}${inj}</strong>
-                    <span>${player.skill}</span>
+                    <span class="skill-profile">${skills}</span>
                     <span>${energyHtml}</span>
                     <span>${fmt(player.value)}</span>
                     <span class="player-status ${statusClass}">${esc(statusLabel)}</span>
@@ -1303,17 +1319,14 @@
             }
             const buyDisabled = state?.transfer_bought_this_window ? "disabled" : "";
             return `
-            <div class="player-row">
+            <button type="button" class="player-row${buyDisabled ? " player-disabled" : ""}"
+                data-buy="${esc(player.id)}" data-team="${esc(teamName)}" ${buyDisabled}>
                 <strong class="${pc}">${esc(player.name)}</strong>
-                <span>${player.skill}</span>
+                <span class="skill-profile">${skills}</span>
                 <span>${energyHtml}</span>
                 <span>${fmt(player.value)}</span>
-                <div class="player-actions">
-                    <button data-buy="${esc(player.id)}" data-team="${esc(teamName)}" ${buyDisabled}>
-                        Sign ${fmt(player.value)}
-                    </button>
-                </div>
-            </div>`;
+                <span class="player-status status-action">Sign</span>
+            </button>`;
         }
 
         const ALL_TEAM_NAMES = [

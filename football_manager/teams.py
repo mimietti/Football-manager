@@ -82,6 +82,15 @@ class Player:
     morale: int
     value: int
     injured_weeks: int = 0
+    skill_d: int = 0
+    skill_m: int = 0
+    skill_a: int = 0
+
+    def __setstate__(self, state: dict) -> None:
+        self.__dict__.update(state)
+        if 'skill_d' not in self.__dict__:
+            sd, sm, sa = _position_skills(self.position, self.skill)
+            self.skill_d, self.skill_m, self.skill_a = sd, sm, sa
 
     def to_dict(self, active: bool = False) -> dict:
         data = asdict(self)
@@ -436,6 +445,7 @@ def create_retro_player(index: int, d2: int) -> Player:
     energy = random.randint(1, 20)        # y(i) = FN r(20)
     # Morale starts random around 10 so modern mode has per-player variation
     morale = random.randint(7, 13)
+    sd, sm, sa = _position_skills(position, skill)
     return Player(
         id=f"p{index}",
         name=name,
@@ -444,6 +454,9 @@ def create_retro_player(index: int, d2: int) -> Player:
         energy=energy,
         morale=morale,
         value=value,
+        skill_d=sd,
+        skill_m=sm,
+        skill_a=sa,
     )
 
 
@@ -489,14 +502,19 @@ def create_retro_human_team(manager_name: str, team_name: str, division: int = 4
 def create_player(position: str, prefix: str = "p") -> Player:
     skill = random.randint(35, 88)
     value = max(5000, round(skill * 2200 + random.randint(-12000, 18000)))
+    pos = position if position in POSITIONS else random.choice(POSITIONS)
+    sd, sm, sa = _position_skills(pos, skill)
     return Player(
         id=f"{prefix}-{random.randint(100000, 999999)}",
         name=f"{random.choice(FIRST_NAMES)} {random.choice(LAST_NAMES)}",
-        position=position if position in POSITIONS else random.choice(POSITIONS),
+        position=pos,
         skill=skill,
         energy=random.randint(55, 95),
         morale=random.randint(40, 80),
         value=value,
+        skill_d=sd,
+        skill_m=sm,
+        skill_a=sa,
     )
 
 
@@ -557,6 +575,18 @@ def create_league(manager_names: list[str], league_size: int = 20) -> list[Team]
 
 def _avg(values: list[int]) -> int:
     return round(sum(values) / len(values)) if values else 1
+
+
+def _position_skills(position: str, skill: int) -> tuple[int, int, int]:
+    """Returns (skill_d, skill_m, skill_a). -1 per adjacent position, -2 for far."""
+    adj = max(1, skill - 1)
+    far = max(1, skill - 2)
+    if position == "D":
+        return skill, adj, far
+    elif position == "M":
+        return adj, skill, adj
+    else:  # A
+        return far, adj, skill
 
 
 def _unit_strength(players: list[Player], position: str) -> int:

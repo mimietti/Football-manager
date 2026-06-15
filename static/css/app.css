@@ -588,7 +588,7 @@ select {
 }
 .squad-table-head {
     display: grid;
-    grid-template-columns: minmax(116px, 1fr) 42px 64px 92px 74px;
+    grid-template-columns: minmax(116px, 1fr) 86px 64px 92px 74px;
     gap: 6px;
     align-items: center;
     padding: 2px 6px;
@@ -613,7 +613,7 @@ select {
 }
 .player-row {
     display: grid;
-    grid-template-columns: minmax(116px, 1fr) 42px 64px 92px 74px;
+    grid-template-columns: minmax(116px, 1fr) 86px 64px 92px 74px;
     gap: 6px;
     align-items: center;
     padding: 3px 6px;
@@ -676,6 +676,14 @@ button.player-row:hover {
     margin-top: 0;
     color: var(--muted);
     font-size: 14px;
+}
+.skill-profile {
+    font-size: 11px;
+    letter-spacing: 0;
+}
+.player-disabled {
+    opacity: 0.45;
+    cursor: not-allowed;
 }
 .energy-value {
     display: inline;
@@ -896,6 +904,13 @@ em.inj {
     background: rgba(214,199,93,0.1);
     border: 1px solid rgba(214,199,93,0.35);
     border-radius: 3px;
+}
+.pm-formation {
+    margin-left: 8px;
+    background: rgba(117,212,131,0.1) !important;
+    border-color: rgba(117,212,131,0.35) !important;
+    color: var(--green) !important;
+    font-weight: 900;
 }
 .pre-match-panel .match-panel {
     width: min(860px, 100%);
