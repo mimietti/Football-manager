@@ -647,6 +647,37 @@
                 }
             }
 
+            _moveOffBall() {
+                if(this._vs!=="attack-human" && this._vs!=="attack-ai") return;
+                const humanAttacking=this._vs==="attack-human";
+                const fwd=humanAttacking?0.018:-0.018;
+                const clamp=(v,a,b)=>Math.max(a,Math.min(b,v));
+                const wob=Math.sin(this.phase*1.7)*0.018;
+                const supportY=clamp(this.bpy + (this.attackVariant===1 ? -0.16 : this.attackVariant===2 ? 0.16 : 0.10) + wob, .26, .74);
+                const supportPx=humanAttacking ? clamp(this.bpx+.08,.72,.86) : clamp(this.bpx-.08,.14,.28);
+                const supportIdx=humanAttacking?1:3;
+                if(this.pl[supportIdx] && supportIdx!==this.dribblerIdx && supportIdx!==this.shooterIdx) {
+                    this.pl[supportIdx].tpx=supportPx;
+                    this.pl[supportIdx].tpy=supportY;
+                }
+                if(this.pl[this.shooterIdx] && this.shooterIdx!==this.dribblerIdx) {
+                    this.pl[this.shooterIdx].tpx=(this.passTarget?.px ?? this.bpx)+fwd;
+                    this.pl[this.shooterIdx].tpy=this.passTarget?.py ?? this.bpy;
+                }
+                const defenders=humanAttacking ? [2,3,4] : [0,1,4];
+                defenders.forEach((idx,n)=>{
+                    if(!this.pl[idx]) return;
+                    if(idx===this.dribblerIdx || idx===this.shooterIdx) return;
+                    const stagger=(n-1)*0.12;
+                    const coverX=humanAttacking
+                        ? clamp(this.bpx+.055+n*.035,.66,.90)
+                        : clamp(this.bpx-.055-n*.035,.10,.34);
+                    const coverY=clamp(this.bpy+stagger+wob*(n+1),.24,.76);
+                    this.pl[idx].tpx=coverX;
+                    this.pl[idx].tpy=coverY;
+                });
+            }
+
             goal(humanScored) {
                 this.goalHuman=humanScored; this.bannType=null;
                 this._dribbleSetup(humanScored);
@@ -723,6 +754,7 @@
                 for(const p of this.pl){p.px+=(p.tpx-p.px)*sp;p.py+=(p.tpy-p.py)*sp;}
                 if(this.dribbleActive) {
                     // Phase 1: slow dribble — dribbler player tracks the ball
+                    this._moveOffBall();
                     const dribIdx=this.dribblerIdx;
                     const fwd=this._vs==="attack-ai"?-0.02:0.02;
                     if(this.pl[dribIdx]){this.pl[dribIdx].tpx=this.bpx+fwd;this.pl[dribIdx].tpy=this.bpy;}
@@ -741,6 +773,7 @@
                         this.bpy+=(dy/dist)*this.dribbleStep;
                     }
                 } else if(this.passActive) {
+                    this._moveOffBall();
                     const fwd=this._vs==="attack-ai"?-0.02:0.02;
                     if(this.pl[this.shooterIdx]){
                         this.pl[this.shooterIdx].tpx=this.passTarget.px+fwd;
@@ -757,6 +790,7 @@
                         this.bpy+=(dy/dist)*this.passStep;
                     }
                 } else if(this.kickTick>0) {
+                    this._moveOffBall();
                     const dribIdx=this.shooterIdx;
                     const fwd=this._vs==="attack-ai"?-0.02:0.02;
                     if(this.pl[dribIdx]){this.pl[dribIdx].tpx=this.bpx+fwd;this.pl[dribIdx].tpy=this.bpy;}
