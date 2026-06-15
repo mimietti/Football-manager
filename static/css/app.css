@@ -1139,6 +1139,52 @@ em.inj {
 .live-report {
     grid-template-columns: 1fr;
 }
+.live-report #reportPanel {
+    padding: 10px 14px;
+}
+.live-report #reportPanel h2,
+.live-report .score,
+.live-report .match-finance {
+    display: none;
+}
+.live-report .report {
+    margin: 0;
+}
+.live-report .latest-match ul {
+    margin: 0;
+}
+.live-report .latest-match li {
+    display: none;
+}
+.live-report .latest-match li:last-child {
+    display: grid;
+    grid-template-columns: 58px minmax(0, 1fr);
+    align-items: center;
+    gap: 12px;
+    min-height: 54px;
+    padding: 8px 12px;
+    border: 1px solid rgba(214,199,93,0.32);
+    border-radius: 6px;
+    background: rgba(0,0,0,0.24);
+    color: #fff8c7;
+    font-size: clamp(20px, 1.9vw, 30px);
+    font-weight: 900;
+    line-height: 1.15;
+}
+.live-report .latest-match .match-minute {
+    min-width: 50px;
+    padding: 3px 7px;
+    font-size: 18px;
+}
+.live-report .latest-match li.event-goal:last-child {
+    color: var(--green);
+}
+.live-report .latest-match li.event-save:last-child {
+    color: var(--accent);
+}
+.live-report .latest-match li.event-wide:last-child {
+    color: rgba(245,246,232,0.62);
+}
 .team-picker {
     position: relative;
     padding: 16px 0 8px;
