@@ -116,18 +116,26 @@
                     <div class="title-actions">
                         <span id="lineupBadge" class="lineup-badge"></span>
                         <button id="renameTeamButton" class="title-action" type="button">Rename Club</button>
+                        <button id="renamePlayerButton" class="title-action" type="button">Rename Player</button>
+                    </div>
+                </div>
+                <div id="renamePlayerPicker" class="rename-picker" style="display:none">
+                    <select id="renamePlayerSelect"></select>
+                    <button id="renamePlayerConfirm" type="button">Rename</button>
+                    <button id="renamePlayerCancel" type="button">✕</button>
+                </div>
+                <div id="loanBlock" class="loan-block">
+                    <div id="loanInfo" class="loan-info"></div>
+                    <div class="loan-controls">
+                        <input id="loanAmount" type="number" min="1000" step="1000" value="10000" placeholder="£ amount">
+                        <button id="borrowButton" type="button">Borrow</button>
+                        <button id="repayButton" type="button">Repay</button>
                     </div>
                 </div>
                 <div id="teamSummary" class="team-summary"></div>
-                <div class="finance-actions">
-                    <input id="loanAmount" type="number" min="1000" step="1000" value="10000" placeholder="£ amount">
-                    <button id="borrowButton">Loan</button>
-                    <button id="repayButton">Repay</button>
-                </div>
                 <div class="management-actions">
                     <div class="squad-action-bar" aria-label="Squad action">
                         <button type="button" data-squad-action="lineup">Pick/Bench</button>
-                        <button type="button" data-squad-action="rename">Rename</button>
                         <button type="button" data-squad-action="sell">Sell</button>
                     </div>
                     <button id="continueToMatch" type="button">Continue to match</button>
@@ -531,7 +539,9 @@
             setScore(h, a) { this.hg=h; this.ag=a; }
 
             _shotOrigin(attackingRight) {
-                return {px:.75+Math.random()*0.05, py:.39+Math.random()*0.22};
+                return attackingRight
+                    ? {px:.80+Math.random()*0.04, py:.40+Math.random()*0.20}
+                    : {px:.20-Math.random()*0.04, py:.40+Math.random()*0.20};
             }
 
             goal(humanScored) {
@@ -543,7 +553,7 @@
                 this.bpx=origin.px; this.bpy=origin.py;
                 this.shotStart={px:this.bpx, py:this.bpy};
                 this.shotTraceTick=180;
-                this.btpx=0.885+Math.random()*0.02;
+                this.btpx=humanScored?0.994:0.006;
                 this.btpy=0.40+Math.random()*0.20;
                 this.shotActive=true; this._pending="goal";
             }
@@ -557,10 +567,10 @@
                 this.shotStart={px:this.bpx, py:this.bpy};
                 this.shotTraceTick=180;
                 const r=Math.random();
-                this.btpx=0.94;
-                if(r<0.34) this.btpy=0.24+Math.random()*0.08;         // wide of the near post
-                else if(r<0.67) this.btpy=0.68+Math.random()*0.08;   // wide of the far post
-                else { this.btpx=0.91; this.btpy=0.10+Math.random()*0.08; } // over bar
+                const gpx=humanMissed?1.02:-0.02;
+                if(r<0.33) { this.btpx=gpx; this.btpy=0.24+Math.random()*0.08; }       // wide near post
+                else if(r<0.66) { this.btpx=gpx; this.btpy=0.68+Math.random()*0.08; } // wide far post
+                else { this.btpx=gpx; this.btpy=0.28+Math.random()*0.06; }             // over bar (high)
                 this.shotActive=true; this._pending="nogoal";
             }
 
@@ -572,9 +582,11 @@
                 this.bpx=origin.px; this.bpy=origin.py;
                 this.shotStart={px:this.bpx, py:this.bpy};
                 this.shotTraceTick=180;
-                this.btpx=0.86+Math.random()*0.025;
+                const kpx=humanAttacking?0.93+Math.random()*0.02:0.07-Math.random()*0.02;
+                this.btpx=kpx;
                 this.btpy=0.38+Math.random()*0.24;
-                this.keeperSave={fromPx:0.88, fromPy:0.50, px:this.btpx, py:this.btpy, human:!humanAttacking};
+                const kFrom=humanAttacking?0.91:0.09;
+                this.keeperSave={fromPx:kFrom, fromPy:0.50, px:kpx, py:this.btpy, human:!humanAttacking};
                 this.keeperTick=0;
                 this.shotActive=true; this._pending="saved";
             }
@@ -691,39 +703,22 @@
                 g.restore();
             }
 
-            _goal3d(isHome) {
-                const g=this.g; const depth=0.082; const gh=11;
-                const py1=0.36,py2=0.64;
-                const mouth=isHome?0:1;
-                const back=isHome?depth:1-depth;
-                const roof1=isHome?py1-.11:py1+.11;
-                const roof2=isHome?py2+.11:py2-.11;
-                const floor1=isHome?py1+.03:py1-.03;
-                const floor2=isHome?py2-.03:py2+.03;
-                const post1=this._ps(mouth,py1), post2=this._ps(mouth,py2);
-                const roofA=this._ps(back,roof1), roofB=this._ps(back,roof2);
-                const floorA=this._ps(back,floor1), floorB=this._ps(back,floor2);
+            _drawGoal(isHome) {
+                const g=this.g, py1=0.36, py2=0.64, gh=22;
+                const px=isHome?0:1;
+                const p1=this._ps(px,py1), p2=this._ps(px,py2);
                 g.save();
-                g.strokeStyle="#ffff00"; g.lineWidth=1.8;
+                g.strokeStyle="#ffff00"; g.lineWidth=2.2;
+                g.lineCap="round"; g.lineJoin="round";
                 g.beginPath();
-                // Front posts and crossbar.
-                g.moveTo(post1.x,post1.y-gh); g.lineTo(post2.x,post2.y-gh);
-                g.moveTo(post1.x,post1.y-gh); g.lineTo(post1.x,post1.y);
-                g.moveTo(post2.x,post2.y-gh); g.lineTo(post2.x,post2.y);
-                // Angled roof and floor, matching the BASIC outline.
-                g.moveTo(post1.x,post1.y-gh); g.lineTo(roofA.x,roofA.y-gh);
-                g.moveTo(post2.x,post2.y-gh); g.lineTo(roofB.x,roofB.y-gh);
-                g.moveTo(roofA.x,roofA.y-gh); g.lineTo(roofB.x,roofB.y-gh);
-                g.moveTo(post1.x,post1.y); g.lineTo(floorA.x,floorA.y);
-                g.moveTo(post2.x,post2.y); g.lineTo(floorB.x,floorB.y);
-                g.moveTo(floorA.x,floorA.y); g.lineTo(floorB.x,floorB.y);
-                // Side net supports and a single cross brace.
-                g.moveTo(roofA.x,roofA.y-gh); g.lineTo(floorA.x,floorA.y);
-                g.moveTo(roofB.x,roofB.y-gh); g.lineTo(floorB.x,floorB.y);
-                g.moveTo(roofA.x,roofA.y-gh); g.lineTo(floorB.x,floorB.y);
+                g.moveTo(p1.x,p1.y); g.lineTo(p1.x,p1.y-gh);
+                g.moveTo(p2.x,p2.y); g.lineTo(p2.x,p2.y-gh);
+                g.moveTo(p1.x,p1.y-gh); g.lineTo(p2.x,p2.y-gh);
                 g.stroke();
                 g.restore();
             }
+
+            _apv(px, py) { const p=this._ap(px,py); return [p.x,p.y]; }
 
             _ap(px, py) {
                 const right=this._vs!=="attack-ai";
@@ -775,10 +770,10 @@
             _attackGoal() {
                 const g=this.g;
                 const P=(x,y)=>this._attackPoint(x,y);
-                const leftTop = P(.78,.90);
-                const leftBottom = P(.78,.95);
+                const leftTop = P(.80,.90);
                 const rightTop = P(.88,.91);
-                const rightBottom = P(.88,.98);
+                const leftBottom = {x:leftTop.x, y:leftTop.y + this._attackRect().h * 0.06};
+                const rightBottom = {x:rightTop.x, y:rightTop.y + this._attackRect().h * 0.06};
                 g.save();
                 g.strokeStyle="#ffff00";
                 g.lineWidth=Math.max(2.5, this._attackRect().w*0.0045);
@@ -795,7 +790,7 @@
 
             _goalBallInNet() {
                 if(this.goalTick<=0 && this.goalDelayTick<=0) return;
-                const p=this._attackPoint(.83,.93);
+                const p=this._ap(this.btpx, this.btpy);
                 this._ball(p.x,p.y,7);
             }
 
@@ -841,25 +836,50 @@
             _drawAttack() {
                 const {g,W,H}=this;
                 g.fillStyle="#00bb00"; g.fillRect(0,0,W,H);
-                g.strokeStyle="#ffff00";
-                g.lineWidth=3.4;
-                g.lineJoin="round";
-                g.lineCap="round";
-                // Tight attacking-area camera: penalty area, six-yard box and goal only.
-                this._attackLine([[.05,.23],[.45,.23],[.88,.91]]);
-                this._attackLine([[.05,.23],[.47,.88],[.88,.91]]);
-                this._attackLine([[.39,.36],[.55,.36],[.80,.90],[.47,.88],[.39,.36]]);
-                this._attackGoal();
+                const ai=this._vs==="attack-ai";
+                // All coords in pitch space (0..1); _ap() mirrors for AI automatically.
+                const gx=ai?0:1, pax=ai?0.25:0.75, sbx=ai?0.12:0.88, psx=ai?0.12:0.88;
+                const AP=(px,py)=>this._ap(px,py);
+                g.strokeStyle="#ffff00"; g.lineWidth=2.8;
+                g.lineJoin="round"; g.lineCap="round";
+                // Penalty area
+                g.beginPath();
+                g.moveTo(...this._apv(pax,0.18)); g.lineTo(...this._apv(gx,0.18));
+                g.moveTo(...this._apv(pax,0.82)); g.lineTo(...this._apv(gx,0.82));
+                g.moveTo(...this._apv(pax,0.18)); g.lineTo(...this._apv(pax,0.82));
+                g.stroke();
+                // 6-yard box
+                g.beginPath();
+                g.moveTo(...this._apv(sbx,0.32)); g.lineTo(...this._apv(gx,0.32));
+                g.moveTo(...this._apv(sbx,0.68)); g.lineTo(...this._apv(gx,0.68));
+                g.moveTo(...this._apv(sbx,0.32)); g.lineTo(...this._apv(sbx,0.68));
+                g.stroke();
+                // Penalty spot
+                const ps=AP(psx,0.50);
+                g.beginPath(); g.arc(ps.x,ps.y,3,0,Math.PI*2); g.fill();
+                // Goal: mouth on end line, depth bracket extends rightward (into net, off-screen)
+                const gdepth=22;
+                const gp1=AP(gx,0.36), gp2=AP(gx,0.64);
+                g.lineWidth=3.2;
+                g.beginPath();
+                g.moveTo(gp1.x,gp1.y); g.lineTo(gp2.x,gp2.y);               // goal mouth
+                g.moveTo(gp1.x,gp1.y); g.lineTo(gp1.x+gdepth,gp1.y);        // top post
+                g.moveTo(gp2.x,gp2.y); g.lineTo(gp2.x+gdepth,gp2.y);        // bottom post
+                g.moveTo(gp1.x+gdepth,gp1.y); g.lineTo(gp2.x+gdepth,gp2.y); // back of net
+                g.stroke();
+                // Shot arc and ball
                 this._attackShotArc();
-                const bs=this._ap(this.bpx,this.bpy);
-                this._ball(bs.x,bs.y,6);
+                if(this.goalTick<=0 && this.goalDelayTick<=0) {
+                    const bs=AP(this.bpx,this.bpy);
+                    this._ball(bs.x,bs.y,6);
+                }
                 for(const p of this.pl){
-                    const s=this._ap(p.px,p.py);
+                    const s=AP(p.px,p.py);
                     this._fig(s.x,s.y,p.human,(Math.abs(p.px-p.tpx)+Math.abs(p.py-p.tpy))>0.015);
                 }
                 if(this.keeperSave && (this.shotActive || this.keeperTick>0)) {
                     const kp=this._keeperSavePoint();
-                    const ks=this._ap(kp.px,kp.py);
+                    const ks=AP(kp.px,kp.py);
                     this._keeper(ks.x,ks.y,this.keeperSave.human);
                 }
                 this._goalBallInNet();
@@ -887,7 +907,7 @@
                 this._lp([[1,.18],[.75,.18],[.75,.82],[1,.82],[1,.18]]);
                 this._lp([[1,.32],[.88,.32],[.88,.68],[1,.68],[1,.32]]);
                 this._parc(.75,.5,.13,.22,Math.PI*.58,Math.PI*1.42);
-                this._goal3d(true); this._goal3d(false);
+                this._drawGoal(true); this._drawGoal(false);
                 this._shotArc();
                 const bs=this._ps(this.bpx,this.bpy);
                 this._ball(bs.x,bs.y,6);
@@ -1135,19 +1155,18 @@
         }
 
         function renderTeamSummary(team) {
-            const d2 = team.div_multiplier || 1;
-            document.getElementById("teamSummary").innerHTML = `
-                <div>Cash: ${fmt(team.cash)}</div>
-                <div>Loan: ${fmt(team.loan)}</div>
-                <div>Gate money: ${fmt(team.gate_money)}</div>
-                <div>Wages/wk: ${fmt(team.wage_bill)}</div>
-                <div>Rent/wk: ${fmt(team.ground_rent)}</div>
-                <div>Interest/wk: ${fmt(team.loan_interest)}</div>
-                <div>Loan limit: ${fmt(team.loan_limit)}</div>
-                <div>Squad: ${team.squad_size}/${team.max_squad_size}</div>
-                <div>Morale: ${team.retro_morale}/20</div>
-                <div>Lineup: ${team.lineup_size}/11</div>
-            `;
+            document.getElementById("loanInfo").innerHTML =
+                `<span>Loan: <strong>${fmt(team.loan)}</strong></span>` +
+                `<span>Interest: ${fmt(team.loan_interest)}/wk</span>` +
+                `<span>Max: ${fmt(team.loan_limit)}</span>`;
+            document.getElementById("teamSummary").innerHTML =
+                `<div>Cash: ${fmt(team.cash)}</div>` +
+                `<div>Gate: ${fmt(team.gate_money)}</div>` +
+                `<div>Wages: ${fmt(team.wage_bill)}/wk</div>` +
+                `<div>Rent: ${fmt(team.ground_rent)}/wk</div>` +
+                `<div>Squad: ${team.squad_size}/${team.max_squad_size}</div>` +
+                `<div>Morale: ${team.retro_morale}/20</div>` +
+                `<div>Lineup: ${team.lineup_size}/11</div>`;
         }
 
         function posLabel(pos) {
@@ -1233,9 +1252,6 @@
                         statusLabel = "Swap";
                         statusClass = "status-swap";
                     }
-                } else if (squadAction === "rename") {
-                    statusLabel = "Rename";
-                    statusClass = "status-action";
                 } else if (squadAction === "sell") {
                     statusLabel = state?.transfer_sold_this_window ? "Sold" : "Sell";
                     statusClass = player.injured || state?.transfer_sold_this_window ? "status-disabled" : "status-action";
@@ -1366,6 +1382,34 @@
             if (name) socket.emit("rename_team", { team, name });
         });
 
+        document.getElementById("renamePlayerButton").addEventListener("click", () => {
+            const human = (state?.human_teams || [])[0];
+            if (!human) return;
+            const select = document.getElementById("renamePlayerSelect");
+            select.innerHTML = (human.squad || [])
+                .map(p => `<option value="${esc(p.id)}">${esc(p.name)}</option>`)
+                .join("");
+            document.getElementById("renamePlayerPicker").style.display = "flex";
+        });
+
+        document.getElementById("renamePlayerConfirm").addEventListener("click", () => {
+            const human = (state?.human_teams || [])[0];
+            if (!human) return;
+            const select = document.getElementById("renamePlayerSelect");
+            const playerId = select.value;
+            const player = (human.squad || []).find(p => p.id === playerId);
+            if (!player) return;
+            const name = prompt("New name for " + player.name, player.name);
+            if (name) {
+                socket.emit("rename_player", { team: human.name, player_id: playerId, name });
+                document.getElementById("renamePlayerPicker").style.display = "none";
+            }
+        });
+
+        document.getElementById("renamePlayerCancel").addEventListener("click", () => {
+            document.getElementById("renamePlayerPicker").style.display = "none";
+        });
+
         document.querySelectorAll("[data-mode]").forEach(b =>
             b.addEventListener("click", () =>
                 socket.emit("set_tactics", { mode: b.dataset.mode })));
@@ -1394,15 +1438,6 @@
                 const human = (state?.human_teams || [])[0];
                 const player = (human?.squad || []).find(p => p.id === playerSelect.dataset.playerSelect);
                 if (!player) return;
-                if (squadAction === "rename") {
-                    const name = prompt("New player name", player.name);
-                    if (name) socket.emit("rename_player", {
-                        team: playerSelect.dataset.team,
-                        player_id: player.id,
-                        name,
-                    });
-                    return;
-                }
                 if (squadAction === "sell") {
                     if (player.injured || state?.transfer_sold_this_window) return;
                     socket.emit("sell_player", { team: playerSelect.dataset.team, player_id: player.id });

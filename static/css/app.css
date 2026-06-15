@@ -206,11 +206,12 @@ button:disabled {
     flex-direction: column;
 }
 .management-layout .transfer-inline { order: 1; }
-.management-layout .finance-actions { order: 2; }
-.management-layout .panel-title-row { order: 3; }
-.management-layout .team-summary { order: 4; }
-.management-layout .management-actions { order: 5; }
-.management-layout .squad-grid { order: 6; }
+.management-layout .panel-title-row { order: 2; }
+.management-layout .rename-picker { order: 3; }
+.management-layout .loan-block { order: 4; }
+.management-layout .team-summary { order: 5; }
+.management-layout .management-actions { order: 6; }
+.management-layout .squad-grid { order: 7; }
 .panel,
 .match-panel {
     padding: 12px;
@@ -486,19 +487,56 @@ select {
     color: var(--muted);
     font-size: 12px;
 }
-.finance-actions {
-    display: grid;
-    grid-template-columns: 132px auto auto;
+.rename-picker {
+    display: none;
+    align-items: center;
     gap: 8px;
-    justify-content: start;
     margin-bottom: 8px;
+    flex-wrap: wrap;
 }
-.finance-actions input {
-    width: 132px;
+.rename-picker select {
+    flex: 1;
+    min-width: 120px;
+    padding: 6px 8px;
+    background: var(--panel);
+    color: var(--text);
+    border: 1px solid var(--line);
+    border-radius: 8px;
+    font-size: 12px;
+}
+.rename-picker button {
+    padding: 6px 10px;
+    border-radius: 8px;
+    font-size: 12px;
+}
+.loan-block {
+    border: 1px solid var(--line);
+    border-radius: 10px;
+    padding: 10px 12px;
+    margin-bottom: 8px;
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+}
+.loan-info {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 4px 16px;
+    font-size: 13px;
+}
+.loan-info strong {
+    color: var(--accent);
+}
+.loan-controls {
+    display: grid;
+    grid-template-columns: 1fr auto auto;
+    gap: 8px;
+}
+.loan-controls input {
     padding: 6px 10px;
 }
-.finance-actions button {
-    padding: 6px 9px;
+.loan-controls button {
+    padding: 6px 10px;
     border-radius: 8px;
     font-size: 12px;
 }
@@ -1000,7 +1038,7 @@ em.inj {
     }
     .squad-action-bar {
         display: grid;
-        grid-template-columns: repeat(3, 1fr);
+        grid-template-columns: repeat(2, 1fr);
         width: 100%;
     }
     .management-actions > #continueToMatch {
