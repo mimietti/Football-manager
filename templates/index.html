@@ -1342,6 +1342,7 @@
             // Play / end-season buttons
             const _canPlay = (state?.human_teams?.[0]?.lineup_size ?? 0) === 11;
             document.getElementById("playRound").disabled = state.season_over || waitingForMatch || !_canPlay;
+            document.getElementById("continueToMatch").disabled = !_canPlay;
             document.getElementById("endSeason").style.display =
                 state.season_over ? "inline-flex" : "none";
             document.getElementById("editSquad").style.display =
