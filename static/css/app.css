@@ -472,6 +472,28 @@ button:disabled {
     background: #0b45d9;
     box-shadow: none;
 }
+.visual-score {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 12px;
+    padding: 8px 12px;
+    font-family: "Courier New", monospace;
+    font-size: 20px;
+    font-weight: 900;
+    color: #fff8c7;
+    background: rgba(0,0,0,0.55);
+    border: 1px solid rgba(255,255,255,0.10);
+    border-top: none;
+    border-radius: 0 0 8px 8px;
+    min-height: 42px;
+}
+.score-compact {
+    font-size: 15px;
+    font-weight: 700;
+    color: rgba(245,246,232,0.6);
+    margin-bottom: 4px;
+}
 .visual-fixture {
     position: absolute;
     left: 24px;
