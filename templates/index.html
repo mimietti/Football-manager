@@ -1192,6 +1192,7 @@
 
             _draw() {
                 const {g,W,H}=this;
+                if(this._vs==="attack-human"||this._vs==="attack-ai"){this._drawAttack();return;}
                 g.fillStyle="#00bb00"; g.fillRect(0,0,W,H);
                 g.save();
                 this._setView(g);
