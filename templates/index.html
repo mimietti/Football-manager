@@ -653,7 +653,7 @@
                 const dribIdx=this.dribblerIdx;
                 if(this.pl[dribIdx]){
                     const fwd=humanAttacking?0.018:-0.018;
-                    this.pl[dribIdx].px=this.bpx+fwd; this.pl[dribIdx].py=this.bpy;
+                    this.pl[dribIdx].px=this.bpx-fwd; this.pl[dribIdx].py=this.bpy;
                     this.pl[dribIdx].tpx=this.pl[dribIdx].px; this.pl[dribIdx].tpy=this.bpy;
                 }
                 this._shapeAttack(humanAttacking);
@@ -806,7 +806,7 @@
                     this._moveOffBall();
                     const dribIdx=this.dribblerIdx;
                     const fwd=this._vs==="attack-ai"?-0.02:0.02;
-                    if(this.pl[dribIdx]){this.pl[dribIdx].tpx=this.bpx+fwd;this.pl[dribIdx].tpy=this.bpy;}
+                    if(this.pl[dribIdx]){this.pl[dribIdx].tpx=this.bpx-fwd;this.pl[dribIdx].tpy=this.bpy;}
                     const dx=this.dribbleTarget.px-this.bpx, dy=this.dribbleTarget.py-this.bpy;
                     const dist=Math.sqrt(dx*dx+dy*dy);
                     if(dist<=this.dribbleStep) {
@@ -842,7 +842,7 @@
                     this._moveOffBall();
                     const dribIdx=this.shooterIdx;
                     const fwd=this._vs==="attack-ai"?-0.02:0.02;
-                    if(this.pl[dribIdx]){this.pl[dribIdx].tpx=this.bpx+fwd;this.pl[dribIdx].tpy=this.bpy;}
+                    if(this.pl[dribIdx]){this.pl[dribIdx].tpx=this.bpx-fwd;this.pl[dribIdx].tpy=this.bpy;}
                     this.kickTick--;
                     if(this.kickTick===0) this._launchShot();
                 } else if(this.shotActive) {
