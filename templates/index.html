@@ -1540,7 +1540,7 @@
             const d = player.morale_delta ?? 0;
             const dStr = d > 0 ? `+${d}` : d < 0 ? `${d}` : null;
             const dc = d > 0 ? "morale-up" : d < 0 ? "morale-dn" : "";
-            return `<span class="morale-val">${m}</span>${dStr ? ` <span class="${dc}">${dStr}</span>` : ""}`;
+            return `<span class="morale-val">M·${m}</span>${dStr ? `<span class="${dc}"> ${dStr}</span>` : ""}`;
         }
 
         function playerRow(player, teamName, owned) {

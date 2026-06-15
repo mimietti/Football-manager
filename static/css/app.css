@@ -590,13 +590,13 @@ select {
     color: var(--accent);
 }
 .loan-controls {
-    display: grid;
-    grid-template-columns: minmax(110px, 1fr) auto auto;
-    gap: 8px;
-    flex: 1;
-    min-width: 0;
+    display: flex;
+    gap: 6px;
+    align-items: center;
+    flex-wrap: wrap;
 }
 .loan-controls input {
+    width: 120px;
     padding: 6px 10px;
 }
 .loan-controls button {
@@ -819,7 +819,7 @@ button.player-row:hover {
     gap: 1px;
     line-height: 1.2;
 }
-.morale-cell .morale-val { color: var(--fg); }
+.morale-cell .morale-val { color: var(--text); }
 .col-status { text-align: center; }
 .morale-up { color: var(--green); }
 .morale-dn { color: var(--red); }
