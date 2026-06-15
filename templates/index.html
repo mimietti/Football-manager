@@ -1327,7 +1327,7 @@
             document.getElementById("endSeason").style.display =
                 state.season_over ? "inline-flex" : "none";
             document.getElementById("editSquad").style.display =
-                (!state.season_over && (state.transfer_window || !(state.last_matches || []).length)) ? "inline-flex" : "none";
+                (!state.season_over) ? "inline-flex" : "none";
 
             // League table
             document.getElementById("tableDiv").textContent = state.division;
