@@ -141,6 +141,7 @@
                     <div id="teamSummary" class="team-summary"></div>
                     <div class="management-actions">
                         <div class="squad-action-bar" aria-label="Squad action">
+                            <button type="button" data-squad-action="lineup">Pick/Bench</button>
                             <button type="button" data-squad-action="sell">Sell</button>
                             <button type="button" data-squad-action="role">Role</button>
                         </div>
@@ -1517,8 +1518,8 @@
             const energyHtml = `<em class="energy-value ${energyClass(player.energy)}">${player.energy}/20</em>`;
             const skills = skillProfile(player);
             if (owned) {
-                let statusLabel = player.active ? player.position : "Bench";
-                let statusClass = player.active ? "status-playing" : "status-bench";
+                let statusLabel = player.active ? "Bench" : "Pick";
+                let statusClass = player.injured ? "status-disabled" : "status-action";
                 if (pendingLineupIn) {
                     if (player.id === pendingLineupIn.id) {
                         statusLabel = "Selected";
