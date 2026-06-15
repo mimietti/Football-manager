@@ -482,10 +482,13 @@
                 ];
                 this.bpx=.50; this.bpy=.50; this.btpx=.50; this.btpy=.50;
                 this.bannType=null; this.bannTick=0; this.bannHuman=true;
-                this.shotActive=false; this.shotStep=0.0055; this._pending=null;
+                this.shotActive=false; this.shotStep=0.007; this._pending=null;
                 this.shotStart=null; this.shotTraceTick=0;
                 this.goalDelayTick=0;
                 this.keeperSave=null; this.keeperTick=0;
+                this.dribbleActive=false; this.dribbleTarget=null; this.dribbleStep=0.0009;
+                this._pendingBtpx=0; this._pendingBtpy=0;
+                this._pendingResult=null; this._pendingKeeper=null; this._attackVs="attack-human";
                 this._raf=null; this._loop=this._loop.bind(this);
                 this._raf=requestAnimationFrame(this._loop);
             }
@@ -532,6 +535,8 @@
                 this.shotStart=null; this.shotTraceTick=0;
                 this.goalDelayTick=0;
                 this.keeperSave=null; this.keeperTick=0;
+                this.dribbleActive=false; this.dribbleTarget=null;
+                this._pendingResult=null; this._pendingKeeper=null;
                 this._form("kickoff");
                 this._hideOverlay();
             }
@@ -544,51 +549,45 @@
                     : {px:.20-Math.random()*0.04, py:.40+Math.random()*0.20};
             }
 
+            _dribbleSetup(humanAttacking) {
+                this._attackVs = humanAttacking ? "attack-human" : "attack-ai";
+                this.setState(this._attackVs);
+                this.goalTick=0; this.goalDelayTick=0; this.bannTick=0;
+                this.shotActive=false; this._pending=null;
+                this.dribbleActive=true;
+                this.dribbleTarget=this._shotOrigin(humanAttacking);
+                // Ball enters from the correct screen edge
+                this.bpx=humanAttacking ? 0.630 : 0.370;
+                this.bpy=0.41+Math.random()*0.18;
+            }
+
             goal(humanScored) {
-                this.setState(humanScored ? "attack-human" : "attack-ai");
-                this.goalHuman=humanScored;
-                this.goalTick=0; this.goalDelayTick=0; this.bannType=null; this.bannTick=0;
-                // Snap ball near the box, then shoot into net
-                const origin=this._shotOrigin(humanScored);
-                this.bpx=origin.px; this.bpy=origin.py;
-                this.shotStart={px:this.bpx, py:this.bpy};
-                this.shotTraceTick=180;
-                this.btpx=humanScored?0.994:0.006;
-                this.btpy=0.40+Math.random()*0.20;
-                this.shotActive=true; this._pending="goal";
+                this.goalHuman=humanScored; this.bannType=null;
+                this._dribbleSetup(humanScored);
+                this._pendingBtpx=humanScored?0.994:0.006;
+                this._pendingBtpy=0.40+Math.random()*0.20;
+                this._pendingResult="goal"; this._pendingKeeper=null;
             }
 
             noGoal(humanMissed) {
-                this.bannType="nogoal"; this.bannTick=0;
-                this.bannHuman=humanMissed; this.goalTick=0; this.goalDelayTick=0;
-                // Snap ball near the box, shoot wide or over
-                const origin=this._shotOrigin(humanMissed);
-                this.bpx=origin.px; this.bpy=origin.py;
-                this.shotStart={px:this.bpx, py:this.bpy};
-                this.shotTraceTick=180;
-                const r=Math.random();
-                const gpx=humanMissed?1.02:-0.02;
-                if(r<0.33) { this.btpx=gpx; this.btpy=0.24+Math.random()*0.08; }       // wide near post
-                else if(r<0.66) { this.btpx=gpx; this.btpy=0.68+Math.random()*0.08; } // wide far post
-                else { this.btpx=gpx; this.btpy=0.28+Math.random()*0.06; }             // over bar (high)
-                this.shotActive=true; this._pending="nogoal";
+                this.bannType="nogoal"; this.bannHuman=humanMissed;
+                this._dribbleSetup(humanMissed);
+                const r=Math.random(), gpx=humanMissed?1.02:-0.02;
+                if(r<0.33){ this._pendingBtpx=gpx; this._pendingBtpy=0.24+Math.random()*0.08; }
+                else if(r<0.66){ this._pendingBtpx=gpx; this._pendingBtpy=0.68+Math.random()*0.08; }
+                else{ this._pendingBtpx=gpx; this._pendingBtpy=0.28+Math.random()*0.06; }
+                this._pendingResult="nogoal"; this._pendingKeeper=null;
             }
 
             saved(humanAttacking) {
-                this.bannType="saved"; this.bannTick=0;
-                this.bannHuman=humanAttacking; this.goalTick=0; this.goalDelayTick=0;
-                // Snap ball near the box, shoot toward goal - stopped by keeper
-                const origin=this._shotOrigin(humanAttacking);
-                this.bpx=origin.px; this.bpy=origin.py;
-                this.shotStart={px:this.bpx, py:this.bpy};
-                this.shotTraceTick=180;
+                this.bannType="saved"; this.bannHuman=humanAttacking;
+                this._dribbleSetup(humanAttacking);
                 const kpx=humanAttacking?0.93+Math.random()*0.02:0.07-Math.random()*0.02;
-                this.btpx=kpx;
-                this.btpy=0.38+Math.random()*0.24;
+                const kpy=0.38+Math.random()*0.24;
                 const kFrom=humanAttacking?0.91:0.09;
-                this.keeperSave={fromPx:kFrom, fromPy:0.50, px:kpx, py:this.btpy, human:!humanAttacking};
-                this.keeperTick=0;
-                this.shotActive=true; this._pending="saved";
+                this._pendingBtpx=kpx; this._pendingBtpy=kpy;
+                this._pendingResult="saved";
+                this._pendingKeeper={fromPx:kFrom, fromPy:0.50, px:kpx, py:kpy, human:!humanAttacking};
             }
 
             clearBanner() {
@@ -597,6 +596,8 @@
                 this.shotStart=null; this.shotTraceTick=0;
                 this.goalDelayTick=0;
                 this.keeperSave=null; this.keeperTick=0;
+                this.dribbleActive=false; this.dribbleTarget=null;
+                this._pendingResult=null; this._pendingKeeper=null;
                 this._hideOverlay();
             }
             setState(name) { this._vs=name; this._form(name); }
@@ -628,8 +629,29 @@
                 this.phase=(t*0.003)%(Math.PI*2);
                 const sp=0.07;
                 for(const p of this.pl){p.px+=(p.tpx-p.px)*sp;p.py+=(p.tpy-p.py)*sp;}
-                if(this.shotActive) {
-                    // Ball travels in a straight line — banner fires when it arrives
+                if(this.dribbleActive) {
+                    // Phase 1: slow dribble approach from screen edge to shot origin
+                    const dx=this.dribbleTarget.px-this.bpx, dy=this.dribbleTarget.py-this.bpy;
+                    const dist=Math.sqrt(dx*dx+dy*dy);
+                    if(dist<=this.dribbleStep) {
+                        this.bpx=this.dribbleTarget.px; this.bpy=this.dribbleTarget.py;
+                        this.dribbleActive=false;
+                        // Launch shot
+                        this.btpx=this._pendingBtpx; this.btpy=this._pendingBtpy;
+                        this.shotStart={px:this.bpx, py:this.bpy};
+                        this.shotTraceTick=180;
+                        if(this._pendingResult==="saved") {
+                            this.keeperSave=this._pendingKeeper; this.keeperTick=0;
+                        }
+                        this._pending=this._pendingResult;
+                        this._pendingResult=null;
+                        this.shotActive=true;
+                    } else {
+                        this.bpx+=(dx/dist)*this.dribbleStep;
+                        this.bpy+=(dy/dist)*this.dribbleStep;
+                    }
+                } else if(this.shotActive) {
+                    // Phase 2: fast shot toward target
                     const dx=this.btpx-this.bpx, dy=this.btpy-this.bpy;
                     const dist=Math.sqrt(dx*dx+dy*dy);
                     if(dist<=this.shotStep) {
@@ -724,8 +746,8 @@
                 const right=this._vs!=="attack-ai";
                 const r=this._attackRect();
                 const xNorm=right
-                    ? (px-.64)/.38
-                    : ((1-px)-.64)/.38;
+                    ? (px-.64)/.38    // human: goal at px=1 → right side
+                    : (px+.02)/.38;   // AI: goal at px=0 → left side (true mirror)
                 const x=r.x + Math.max(-.08,Math.min(1.08,xNorm))*r.w;
                 const y=r.y + (.08+py*.84)*r.h;
                 return {x,y};
@@ -857,15 +879,15 @@
                 // Penalty spot
                 const ps=AP(psx,0.50);
                 g.beginPath(); g.arc(ps.x,ps.y,3,0,Math.PI*2); g.fill();
-                // Goal: mouth on end line, depth bracket extends rightward (into net, off-screen)
-                const gdepth=22;
+                // Goal: mouth on end line, depth into net (right for human, left for AI)
+                const gdepth=22, gdir=ai?-1:1;
                 const gp1=AP(gx,0.36), gp2=AP(gx,0.64);
                 g.lineWidth=3.2;
                 g.beginPath();
-                g.moveTo(gp1.x,gp1.y); g.lineTo(gp2.x,gp2.y);               // goal mouth
-                g.moveTo(gp1.x,gp1.y); g.lineTo(gp1.x+gdepth,gp1.y);        // top post
-                g.moveTo(gp2.x,gp2.y); g.lineTo(gp2.x+gdepth,gp2.y);        // bottom post
-                g.moveTo(gp1.x+gdepth,gp1.y); g.lineTo(gp2.x+gdepth,gp2.y); // back of net
+                g.moveTo(gp1.x,gp1.y); g.lineTo(gp2.x,gp2.y);                               // goal mouth
+                g.moveTo(gp1.x,gp1.y); g.lineTo(gp1.x+gdir*gdepth,gp1.y);                   // top post
+                g.moveTo(gp2.x,gp2.y); g.lineTo(gp2.x+gdir*gdepth,gp2.y);                   // bottom post
+                g.moveTo(gp1.x+gdir*gdepth,gp1.y); g.lineTo(gp2.x+gdir*gdepth,gp2.y);       // back of net
                 g.stroke();
                 // Shot arc and ball
                 this._attackShotArc();
