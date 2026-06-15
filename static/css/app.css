@@ -168,15 +168,17 @@ button:disabled {
     flex-wrap: wrap;
     justify-content: flex-end;
 }
-.sign-out-link {
-    align-self: center;
-    color: rgba(245,246,232,0.45);
-    font-size: 12px;
-    font-weight: 800;
-    text-decoration: none;
+.season-actions {
+    align-items: center;
+    justify-content: flex-end;
 }
-.sign-out-link:hover {
+.season-actions button {
+    padding: 7px 12px;
+    border-radius: 8px;
+    background: rgba(214,199,93,0.14);
+    border-color: rgba(214,199,93,0.42);
     color: var(--accent);
+    font-size: 12px;
 }
 .new-season textarea {
     min-width: 190px;

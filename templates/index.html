@@ -21,7 +21,9 @@
                     <input id="managerName" type="hidden" value="{{ username }}">
                     <button type="submit">Choose Team →</button>
                 </form>
-                <a id="signOutLink" class="sign-out-link" href="/logout" style="display:none">Sign out</a>
+                <div id="seasonActions" class="season-actions" style="display:none">
+                    <button id="newGameButton" type="button">New game</button>
+                </div>
             </div>
             <div id="teamPicker" class="team-picker" style="display:none">
                 <div class="team-picker-header">
@@ -159,6 +161,7 @@
         let playResponseTimer = null;
         let pendingLineupIn = null;
         let squadAction = "lineup";
+        let restartingSeason = false;
 
         const esc = (v) => String(v ?? "")
             .replaceAll("&", "&amp;").replaceAll("<", "&lt;")
@@ -229,6 +232,20 @@
             document.getElementById("closeReport").style.display =
                 (phase === "report" && state.transfer_window) ? "inline-flex" : "none";
             document.getElementById("managementLayout").style.display = phase === "management" ? "" : "none";
+        }
+
+        function hideGameViews() {
+            [
+                "statusBar",
+                "setupControls",
+                "preMatchPanel",
+                "matchVisual",
+                "reportLayout",
+                "managementLayout",
+            ].forEach(id => {
+                const el = document.getElementById(id);
+                if (el) el.style.display = "none";
+            });
         }
 
         function minuteForEvent(index, total, line) {
@@ -1224,7 +1241,7 @@
             const hasActiveGame = (state.human_teams || []).length > 0;
             document.getElementById("heroContent").style.display = "";
             document.getElementById("newSeasonForm").style.display = hasActiveGame ? "none" : "";
-            document.getElementById("signOutLink").style.display = hasActiveGame ? "" : "none";
+            document.getElementById("seasonActions").style.display = hasActiveGame ? "flex" : "none";
             if (hasActiveGame) {
                 document.getElementById("teamPicker").style.display = "none";
             }
@@ -1560,11 +1577,13 @@
 
         let pendingManagerName = null;
 
-        function showTeamPicker(managerName) {
+        function showTeamPicker(managerName, restart = false) {
+            restartingSeason = restart;
             pendingManagerName = managerName;
             document.getElementById("heroContent").style.display = "none";
             document.getElementById("teamPicker").style.display = "";
-            document.getElementById("teamPickerTitle").textContent = "Choose a team";
+            document.getElementById("teamPickerTitle").textContent = restart ? "Choose a new team" : "Choose a team";
+            hideGameViews();
             let html = "";
             for (let div = 1; div <= 4; div++) {
                 html += `<div class="team-div-group"><h3>Division ${div}</h3>`;
@@ -1584,9 +1603,25 @@
             showTeamPicker(name);
         });
 
+        document.getElementById("newGameButton").addEventListener("click", () => {
+            if (!confirm("Start a new game? The current season will be replaced.")) return;
+            try { localStorage.removeItem(localSaveKey); } catch (err) {}
+            pendingLineupIn = null;
+            waitingForMatch = false;
+            animating = false;
+            const name = document.getElementById("managerName").value.trim() || "Manager";
+            showTeamPicker(name, true);
+        });
+
         document.getElementById("teamPickerBack").addEventListener("click", () => {
             document.getElementById("teamPicker").style.display = "none";
             document.getElementById("heroContent").style.display = "";
+            if (restartingSeason && state) {
+                restartingSeason = false;
+                render();
+                return;
+            }
+            restartingSeason = false;
         });
 
         document.getElementById("playRound").addEventListener("click", () => {
@@ -1693,6 +1728,7 @@
             const teamBtn = e.target.closest("[data-team-index]");
             if (teamBtn) {
                 const idx = parseInt(teamBtn.dataset.teamIndex, 10);
+                restartingSeason = false;
                 document.getElementById("teamPicker").style.display = "none";
                 document.getElementById("heroContent").style.display = "";
                 try { localStorage.removeItem(localSaveKey); } catch (err) {}
