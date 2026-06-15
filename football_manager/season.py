@@ -443,6 +443,9 @@ class SeasonState:
     def swap_lineup(self, team_name: str, in_player_id: str, out_player_id: str) -> None:
         self.find_team(team_name).swap_lineup(in_player_id, out_player_id)
 
+    def set_player_role(self, team_name: str, player_id: str, role: str) -> None:
+        self.find_team(team_name).set_player_role(player_id, role)
+
     def change_player_position(self, team_name: str, player_id: str, position: str) -> None:
         self.find_team(team_name).change_player_position(player_id, position)
 

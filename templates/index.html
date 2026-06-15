@@ -1521,9 +1521,10 @@
         }
 
         function squadFormation(squad) {
-            const d = (squad || []).filter(p => p.active && p.position === "D").length;
-            const m = (squad || []).filter(p => p.active && p.position === "M").length;
-            const a = (squad || []).filter(p => p.active && p.position === "A").length;
+            const ep = p => p.playing_as || p.position;
+            const d = (squad || []).filter(p => p.active && ep(p) === "D").length;
+            const m = (squad || []).filter(p => p.active && ep(p) === "M").length;
+            const a = (squad || []).filter(p => p.active && ep(p) === "A").length;
             return `${d}-${m}-${a}`;
         }
 
@@ -1548,7 +1549,7 @@
             const energyHtml = `<em class="energy-value ${energyClass(player.energy)}">${player.energy}/20</em>`;
             const skills = skillProfile(player);
             if (owned) {
-                let statusLabel = player.active ? player.position : "Bench";
+                let statusLabel = player.active ? (player.playing_as || player.position) : "Bench";
                 let statusClass = player.active ? "status-playing" : "status-bench";
                 if (pendingLineupIn) {
                     if (player.id === pendingLineupIn.id) {
@@ -1578,7 +1579,7 @@
                     <span>${energyHtml}</span>
                     <span>${fmt(player.value)}</span>
                     <span class="morale-cell">${moraleHtml(player)}</span>
-                    <span class="player-status ${statusClass}">${squadAction === "role" ? statusLabel : esc(statusLabel)}</span>
+                    <span class="player-status ${statusClass}"${squadAction !== "sell" && !pendingLineupIn ? ` data-cycle-role="${esc(player.id)}" data-team="${esc(teamName)}"` : ""}>${squadAction === "role" ? statusLabel : esc(statusLabel)}</span>
                 </button>`;
             }
             const buyDisabled = state?.transfer_bought_this_window ? "disabled" : "";
@@ -1775,6 +1776,18 @@
             if (buy) {
                 transferMessage = "";
                 emitGame("buy_player", { team: buy.dataset.team, player_id: buy.dataset.buy });
+                return;
+            }
+            const cycleRole = e.target.closest("[data-cycle-role]");
+            if (cycleRole) {
+                const human = (state?.human_teams || [])[0];
+                const player = (human?.squad || []).find(p => p.id === cycleRole.dataset.cycleRole);
+                if (player && !player.injured) {
+                    const roles = ["D", "M", "A", ""];
+                    const current = player.active ? (player.playing_as || player.position) : "";
+                    const next = roles[(roles.indexOf(current) + 1) % roles.length];
+                    emitGame("set_player_role", { team: cycleRole.dataset.team, player_id: player.id, role: next });
+                }
                 return;
             }
             const playerSelect = e.target.closest("[data-player-select]");

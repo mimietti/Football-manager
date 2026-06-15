@@ -86,6 +86,7 @@ class Player:
     skill_m: int = 0
     skill_a: int = 0
     morale_delta: int = 0
+    playing_as: str = ""  # overrides position for lineup role; "" = use natural position
 
     def __setstate__(self, state: dict) -> None:
         self.__dict__.update(state)
@@ -94,6 +95,8 @@ class Player:
             self.skill_d, self.skill_m, self.skill_a = sd, sm, sa
         if 'morale_delta' not in self.__dict__:
             self.morale_delta = 0
+        if 'playing_as' not in self.__dict__:
+            self.playing_as = ""
 
     def to_dict(self, active: bool = False) -> dict:
         data = asdict(self)
@@ -279,6 +282,25 @@ class Team:
             in_player_id if pid == out_player_id else pid
             for pid in self.lineup_ids
         ]
+
+    def set_player_role(self, player_id: str, role: str) -> None:
+        player = next((p for p in self.squad if p.id == player_id), None)
+        if not player:
+            raise ValueError("Player not found")
+        if role in ("D", "M", "A"):
+            player.playing_as = role
+            if player.id not in self.lineup_ids:
+                if player.injured_weeks > 0:
+                    raise ValueError("Player is injured")
+                if len(self.lineup_ids) >= LINEUP_SIZE:
+                    raise ValueError("Lineup is full (11 players)")
+                self.lineup_ids.append(player.id)
+        else:  # bench
+            player.playing_as = ""
+            if player.id in self.lineup_ids:
+                if len(self.lineup_ids) <= 1:
+                    raise ValueError("Must have at least 1 player in lineup")
+                self.lineup_ids.remove(player.id)
 
     def change_player_position(self, player_id: str, position: str) -> None:
         position = position.upper()
@@ -606,7 +628,7 @@ def _position_skills(position: str, skill: int) -> tuple[int, int, int]:
 
 
 def _unit_strength(players: list[Player], position: str) -> int:
-    unit = [p for p in players if p.position == position]
+    unit = [p for p in players if (p.playing_as or p.position) == position]
     if not unit:
         return 1
     return sum(p.skill for p in unit)

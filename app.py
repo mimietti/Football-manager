@@ -120,7 +120,7 @@ def _load_or_restore(uid: int, data: dict | None) -> SeasonState | None:
     return season
 
 
-def _uid() -> int | None:
+def _session_uid() -> int | None:
     # Flask-Login stores user_id in session['_user_id']; more reliable than
     # current_user proxy inside SocketIO handlers under gevent.
     uid = session.get("_user_id")
@@ -133,6 +133,29 @@ def _uid() -> int | None:
 
 
 # ── HTTP routes ───────────────────────────────────────────────────────────────
+
+def _uid(data: dict | None = None) -> int | None:
+    session_uid = _session_uid()
+    if session_uid is not None:
+        user = User.query.get(session_uid)
+        if user and not user.username.startswith("guest_"):
+            return session_uid
+
+    client_id = str((data or {}).get("client_id") or "").strip()
+    if client_id:
+        digest = hashlib.sha256(client_id.encode()).hexdigest()[:16]
+        username = f"guest_{digest}"
+        user = User.query.filter_by(username=username).first()
+        if not user:
+            user = User(username=username)
+            user.set_password(os.urandom(16).hex())
+            db.session.add(user)
+            db.session.commit()
+        session["guest_uid"] = user.id
+        return user.id
+
+    return session_uid
+
 
 @app.get("/")
 def index():
@@ -194,7 +217,7 @@ def logout():
 
 @socketio.on("join")
 def handle_join(data=None):
-    uid = _uid()
+    uid = _uid(data)
     if uid is None:
         return
     join_room(f"u{uid}")
@@ -207,7 +230,7 @@ def handle_join(data=None):
 
 @socketio.on("restore_save")
 def handle_restore_save(data=None):
-    uid = _uid()
+    uid = _uid(data)
     if uid is None:
         return
     data = data or {}
@@ -224,7 +247,7 @@ def handle_restore_save(data=None):
 
 @socketio.on("new_season")
 def handle_new_season(data=None):
-    uid = _uid()
+    uid = _uid(data)
     if uid is None:
         return
     data = data or {}
@@ -240,7 +263,7 @@ def handle_new_season(data=None):
 
 @socketio.on("set_tactics")
 def handle_set_tactics(data=None):
-    uid = _uid()
+    uid = _uid(data)
     if uid is None:
         return
     data = data or {}
@@ -258,7 +281,7 @@ def handle_set_tactics(data=None):
 
 @socketio.on("play_round")
 def handle_play_round(data=None):
-    uid = _uid()
+    uid = _uid(data)
     if uid is None:
         return
     data = data or {}
@@ -276,7 +299,7 @@ def handle_play_round(data=None):
 
 @socketio.on("end_season")
 def handle_end_season(data=None):
-    uid = _uid()
+    uid = _uid(data)
     if uid is None:
         return
     season = _load(uid)
@@ -294,7 +317,7 @@ def handle_end_season(data=None):
 
 @socketio.on("buy_player")
 def handle_buy_player(data=None):
-    uid = _uid()
+    uid = _uid(data)
     if uid is None:
         return
     data = data or {}
@@ -311,7 +334,7 @@ def handle_buy_player(data=None):
 
 @socketio.on("sell_player")
 def handle_sell_player(data=None):
-    uid = _uid()
+    uid = _uid(data)
     if uid is None:
         return
     data = data or {}
@@ -328,7 +351,7 @@ def handle_sell_player(data=None):
 
 @socketio.on("toggle_lineup")
 def handle_toggle_lineup(data=None):
-    uid = _uid()
+    uid = _uid(data)
     if uid is None:
         return
     data = data or {}
@@ -345,7 +368,7 @@ def handle_toggle_lineup(data=None):
 
 @socketio.on("swap_lineup")
 def handle_swap_lineup(data=None):
-    uid = _uid()
+    uid = _uid(data)
     if uid is None:
         return
     data = data or {}
@@ -366,7 +389,7 @@ def handle_swap_lineup(data=None):
 
 @socketio.on("change_player_position")
 def handle_change_player_position(data=None):
-    uid = _uid()
+    uid = _uid(data)
     if uid is None:
         return
     data = data or {}
@@ -385,9 +408,30 @@ def handle_change_player_position(data=None):
     _broadcast(uid, season)
 
 
+@socketio.on("set_player_role")
+def handle_set_player_role(data=None):
+    uid = _uid(data)
+    if uid is None:
+        return
+    data = data or {}
+    season = _load(uid)
+    if not season:
+        return
+    try:
+        season.set_player_role(
+            str(data.get("team") or ""),
+            str(data.get("player_id") or ""),
+            str(data.get("role") or ""),
+        )
+    except ValueError as e:
+        emit("action_error", {"message": str(e)})
+        return
+    _broadcast(uid, season)
+
+
 @socketio.on("borrow")
 def handle_borrow(data=None):
-    uid = _uid()
+    uid = _uid(data)
     if uid is None:
         return
     data = data or {}
@@ -404,7 +448,7 @@ def handle_borrow(data=None):
 
 @socketio.on("repay")
 def handle_repay(data=None):
-    uid = _uid()
+    uid = _uid(data)
     if uid is None:
         return
     data = data or {}
@@ -421,7 +465,7 @@ def handle_repay(data=None):
 
 @socketio.on("set_skill_level")
 def handle_set_skill_level(data=None):
-    uid = _uid()
+    uid = _uid(data)
     if uid is None:
         return
     data = data or {}
@@ -438,7 +482,7 @@ def handle_set_skill_level(data=None):
 
 @socketio.on("rename_team")
 def handle_rename_team(data=None):
-    uid = _uid()
+    uid = _uid(data)
     if uid is None:
         return
     data = data or {}
@@ -455,7 +499,7 @@ def handle_rename_team(data=None):
 
 @socketio.on("rename_player")
 def handle_rename_player(data=None):
-    uid = _uid()
+    uid = _uid(data)
     if uid is None:
         return
     data = data or {}
