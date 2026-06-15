@@ -1150,7 +1150,11 @@ em.inj {
     grid-template-columns: 1fr;
 }
 .live-report #reportPanel {
-    padding: 10px 14px;
+    justify-self: center;
+    width: min(760px, calc(100% - 16px));
+    padding: 0;
+    border: 0;
+    background: transparent;
 }
 .live-report #reportPanel h2,
 .live-report .score,
@@ -1168,23 +1172,23 @@ em.inj {
 }
 .live-report .latest-match li:last-child {
     display: grid;
-    grid-template-columns: 58px minmax(0, 1fr);
+    grid-template-columns: 52px minmax(0, 1fr);
     align-items: center;
-    gap: 12px;
-    min-height: 54px;
-    padding: 8px 12px;
+    gap: 10px;
+    min-height: 44px;
+    padding: 6px 10px;
     border: 1px solid rgba(214,199,93,0.32);
     border-radius: 6px;
     background: rgba(0,0,0,0.24);
     color: #fff8c7;
-    font-size: clamp(20px, 1.9vw, 30px);
+    font-size: clamp(17px, 1.45vw, 24px);
     font-weight: 900;
     line-height: 1.15;
 }
 .live-report .latest-match .match-minute {
-    min-width: 50px;
-    padding: 3px 7px;
-    font-size: 18px;
+    min-width: 44px;
+    padding: 2px 6px;
+    font-size: 16px;
 }
 .live-report .latest-match li.event-goal:last-child {
     color: var(--green);
