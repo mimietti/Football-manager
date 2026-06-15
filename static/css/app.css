@@ -720,10 +720,42 @@ button.player-row:hover {
     background: rgba(255,255,255,0.04);
     color: rgba(245,246,232,0.35);
 }
+.status-role {
+    display: inline-flex;
+    gap: 3px;
+    padding: 0;
+    background: transparent;
+}
+.role-chip {
+    display: inline-grid;
+    place-items: center;
+    min-width: 20px;
+    min-height: 20px;
+    padding: 1px 5px;
+    border: 1px solid rgba(255,255,255,0.16);
+    border-radius: 4px;
+    background: rgba(255,255,255,0.06);
+    color: var(--muted);
+    cursor: pointer;
+}
+.role-chip.active {
+    border-color: rgba(117,212,131,0.50);
+    background: rgba(117,212,131,0.18);
+    color: var(--green);
+}
 .player-row span {
     margin-top: 0;
     color: var(--muted);
     font-size: 13px;
+}
+.player-row .role-chip {
+    display: inline-grid;
+    margin: 0;
+    color: var(--muted);
+    font-size: 12px;
+}
+.player-row .role-chip.active {
+    color: var(--green);
 }
 .player-row .player-name-cell {
     display: flex;
@@ -955,7 +987,7 @@ em.inj {
 }
 .pre-match-panel {
     margin-top: 8px;
-    padding: 14px;
+    padding: 12px 14px;
     border: 1px solid var(--line);
     border-radius: 8px;
     background: var(--panel);
@@ -964,21 +996,21 @@ em.inj {
 .pre-match-panel h2 {
     color: var(--accent);
     font-family: "Courier New", monospace;
-    font-size: 22px;
+    font-size: 18px;
     text-align: center;
     letter-spacing: 0.08em;
 }
 .prematch-table {
-    width: min(860px, 100%);
+    width: min(780px, 100%);
     border-collapse: collapse;
-    margin: 2px auto 0;
+    margin: 0 auto;
     font-family: "Courier New", monospace;
-    font-size: clamp(22px, 2.2vw, 34px);
-    line-height: 1.04;
+    font-size: clamp(18px, 1.65vw, 26px);
+    line-height: 1.12;
 }
 .prematch-table th,
 .prematch-table td {
-    padding: 1px 16px;
+    padding: 2px 14px;
     border-bottom: 0;
     text-align: right;
     font-weight: 900;
@@ -1007,10 +1039,10 @@ em.inj {
 .pm-stronger { font-weight: 900; }
 .pm-weaker { opacity: 0.55; }
 .pm-picked {
-    width: min(860px, 100%);
-    margin: 10px auto 0;
+    width: min(780px, 100%);
+    margin: 8px auto 0;
     font-family: "Courier New", monospace;
-    font-size: clamp(14px, 1.4vw, 18px);
+    font-size: clamp(13px, 1.1vw, 16px);
     font-weight: 700;
     color: var(--accent);
     letter-spacing: 0.06em;
@@ -1040,8 +1072,8 @@ em.inj {
     font-weight: 900;
 }
 .pre-match-panel .match-panel {
-    width: min(860px, 100%);
-    margin: 14px auto 0;
+    width: min(780px, 100%);
+    margin: 12px auto 0;
     padding: 0;
     border: 0;
     background: transparent;

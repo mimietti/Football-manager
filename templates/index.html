@@ -139,6 +139,7 @@
                     <div class="management-actions">
                         <div class="squad-action-bar" aria-label="Squad action">
                             <button type="button" data-squad-action="sell">Sell</button>
+                            <button type="button" data-squad-action="role">Role</button>
                         </div>
                         <button id="continueToMatch" type="button">Continue to match</button>
                     </div>
@@ -1338,6 +1339,11 @@
                 } else if (squadAction === "sell") {
                     statusLabel = state?.transfer_sold_this_window ? "Sold" : "Sell";
                     statusClass = player.injured || state?.transfer_sold_this_window ? "status-disabled" : "status-action";
+                } else if (squadAction === "role") {
+                    statusLabel = ["D", "M", "A"].map(pos =>
+                        `<span class="role-chip ${player.position === pos ? "active" : ""}" data-role="${pos}">${pos}</span>`
+                    ).join("");
+                    statusClass = "status-role";
                 }
                 return `
                 <button type="button"
@@ -1350,7 +1356,7 @@
                     <span>${energyHtml}</span>
                     <span>${fmt(player.value)}</span>
                     <span class="morale-cell">${moraleHtml(player)}</span>
-                    <span class="player-status ${statusClass}">${esc(statusLabel)}</span>
+                    <span class="player-status ${statusClass}">${squadAction === "role" ? statusLabel : esc(statusLabel)}</span>
                 </button>`;
             }
             const buyDisabled = state?.transfer_bought_this_window ? "disabled" : "";
@@ -1531,11 +1537,24 @@
                 const human = (state?.human_teams || [])[0];
                 const player = (human?.squad || []).find(p => p.id === playerSelect.dataset.playerSelect);
                 if (!player) return;
+                const role = e.target.closest("[data-role]");
+                if (role) {
+                    const position = role.dataset.role;
+                    if (position && position !== player.position) {
+                        socket.emit("change_player_position", {
+                            team: playerSelect.dataset.team,
+                            player_id: player.id,
+                            position,
+                        });
+                    }
+                    return;
+                }
                 if (squadAction === "sell") {
                     if (player.injured || state?.transfer_sold_this_window) return;
                     socket.emit("sell_player", { team: playerSelect.dataset.team, player_id: player.id });
                     return;
                 }
+                if (squadAction === "role") return;
                 if (pendingLineupIn && player.active) {
                     socket.emit("swap_lineup", {
                         team: playerSelect.dataset.team,

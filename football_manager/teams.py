@@ -280,6 +280,15 @@ class Team:
             for pid in self.lineup_ids
         ]
 
+    def change_player_position(self, player_id: str, position: str) -> None:
+        position = position.upper()
+        if position not in {"D", "M", "A"}:
+            raise ValueError("Position must be D, M or A")
+        player = next((p for p in self.squad if p.id == player_id), None)
+        if not player:
+            raise ValueError("Player not found")
+        player.position = position
+
     def auto_pick_lineup(self) -> None:
         available = sorted(
             [p for p in self.squad if p.injured_weeks == 0],

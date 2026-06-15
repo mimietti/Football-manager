@@ -364,6 +364,27 @@ def handle_swap_lineup(data=None):
     _broadcast(uid, season)
 
 
+@socketio.on("change_player_position")
+def handle_change_player_position(data=None):
+    uid = _uid()
+    if uid is None:
+        return
+    data = data or {}
+    season = _load(uid)
+    if not season:
+        return
+    try:
+        season.change_player_position(
+            str(data.get("team") or ""),
+            str(data.get("player_id") or ""),
+            str(data.get("position") or ""),
+        )
+    except ValueError as e:
+        emit("action_error", {"message": str(e)})
+        return
+    _broadcast(uid, season)
+
+
 @socketio.on("borrow")
 def handle_borrow(data=None):
     uid = _uid()

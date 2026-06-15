@@ -134,6 +134,22 @@ def test_lineup_can_swap_bench_player_for_active_player():
     assert len(human.lineup_ids) == 11
 
 
+def test_player_position_can_be_changed():
+    season = create_new_season(["Tester"])
+    human = season.human_teams()[0]
+    player = human.squad[0]
+
+    season.change_player_position(human.name, player.id, "A")
+
+    assert player.position == "A"
+
+    try:
+        season.change_player_position(human.name, player.id, "G")
+        assert False, "invalid position should fail"
+    except ValueError:
+        pass
+
+
 def test_retro_skill_level():
     season = create_new_season(["Tester"])
     season.set_skill_level(5)
