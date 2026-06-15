@@ -787,7 +787,11 @@
                 // AI: 1 GK + 4D + 4M + 2A = 11
                 fm.push({px:.97,py:.50,tpx:.97,tpy:.50,human:false,isGK:true});
                 spread(4,.86,false); spread(4,.69,false); spread(2,.51,false);
-                this.fmPl=fm.map(p=>({px:p.px,py:p.py,tpx:p.tpx,tpy:p.tpy,human:p.human,isGK:p.isGK||false}));
+                this.fmPl=fm.map(p=>({px:p.px,py:p.py,tpx:p.tpx,tpy:p.tpy,fpx:p.px,fpy:p.py,human:p.human,isGK:p.isGK||false}));
+                const hIdxs=this.fmPl.map((p,i)=>p.human?i:-1).filter(i=>i>=0);
+                const aIdxs=this.fmPl.map((p,i)=>!p.human?i:-1).filter(i=>i>=0);
+                this._humanAttIdx=hIdxs[hIdxs.length-1]??-1;
+                this._aiAttIdx=aIdxs[aIdxs.length-1]??-1;
             }
 
             _form(name) {
@@ -830,6 +834,16 @@
                 this.phase=(t*0.003)%(Math.PI*2);
                 const sp=0.07;
                 for(const p of this.pl){p.px+=(p.tpx-p.px)*sp;p.py+=(p.tpy-p.py)*sp;}
+                // Sync fmPl ball carrier with pl dribbler during attacks
+                if(this.dribbleActive && (this._vs==="attack-human"||this._vs==="attack-ai")){
+                    const humanAtt=this._vs==="attack-human";
+                    const fi=humanAtt?this._humanAttIdx:this._aiAttIdx;
+                    const carrier=fi>=0?this.fmPl[fi]:null;
+                    const plC=this.pl[this.dribblerIdx];
+                    if(carrier&&plC){carrier.tpx=plC.tpx;carrier.tpy=plC.tpy;}
+                } else if(this._vs==="kickoff"||this._vs==="full-time"){
+                    for(const p of this.fmPl){p.tpx=p.fpx;p.tpy=p.fpy;}
+                }
                 for(const p of this.fmPl){p.px+=(p.tpx-p.px)*sp;p.py+=(p.tpy-p.py)*sp;}
                 if(this.dribbleActive) {
                     // Phase 1: slow dribble — dribbler player tracks the ball
@@ -1200,7 +1214,8 @@
                 this._ball(bs.x,bs.y,6);
                 for(const p of this.fmPl){
                     const s=this._ps(p.px,p.py);
-                    this._fig(s.x,s.y,p.human,false,0,0,p.isGK?12:10);
+                    const moving=(Math.abs(p.px-p.tpx)+Math.abs(p.py-p.tpy))>0.015;
+                    this._fig(s.x,s.y,p.human,moving,0,0,p.isGK?12:10);
                     if(p.isGK){
                         g.save();
                         g.font="bold 9px monospace";
@@ -1571,7 +1586,10 @@
             const d = (squad || []).filter(p => p.active && ep(p) === "D").length;
             const m = (squad || []).filter(p => p.active && ep(p) === "M").length;
             const a = (squad || []).filter(p => p.active && ep(p) === "A").length;
-            return `${d}-${m}-${a}`;
+            // GK is taken from first active D (or M if no D) — subtract from display
+            const gkD = d > 0 ? 1 : 0;
+            const gkM = d === 0 && m > 0 ? 1 : 0;
+            return `${d - gkD}-${m - gkM}-${a}`;
         }
 
         function skillProfile(player) {
