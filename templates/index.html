@@ -786,13 +786,20 @@
                 const spread=(n,x,human)=>{
                     if(n<=0) return;
                     const ys=n===1?[.50]:n===2?[.36,.64]:n===3?[.28,.50,.72]:n===4?[.22,.40,.60,.78]:
-                        Array.from({length:n},(_,i)=>0.18+(0.64/Math.max(1,n-1))*i);
+                        n===5?[.18,.32,.50,.68,.82]:Array.from({length:n},(_,i)=>0.15+(0.70/Math.max(1,n-1))*i);
                     ys.forEach(py=>fm.push({px:x,py,tpx:x,tpy:py,human}));
                 };
-                fm.push({px:.03,py:.50,tpx:.03,tpy:.50,human:true});   // human GK
-                spread(hD,.13,true); spread(hM,.30,true); spread(hA,.47,true);
-                fm.push({px:.97,py:.50,tpx:.97,tpy:.50,human:false});  // AI GK
-                spread(4,.87,false); spread(4,.70,false); spread(2,.53,false);
+                // Normalize human to exactly 11: pad/trim midfielders
+                let d=hD|0, m=hM|0, a=hA|0;
+                while(d+m+a<11) m++;
+                while(d+m+a>11){ if(m>0)m--; else if(d>0)d--; else a--; }
+                // First D (or M if no D) becomes GK at far post
+                if(d>0){fm.push({px:.03,py:.50,tpx:.03,tpy:.50,human:true});d--;}
+                else if(m>0){fm.push({px:.03,py:.50,tpx:.03,tpy:.50,human:true});m--;}
+                spread(d,.14,true); spread(m,.31,true); spread(a,.49,true);
+                // AI: 1 GK + 4D + 4M + 2A = 11
+                fm.push({px:.97,py:.50,tpx:.97,tpy:.50,human:false});
+                spread(4,.86,false); spread(4,.69,false); spread(2,.51,false);
                 this.fmPl=fm.map(p=>({px:p.px,py:p.py,tpx:p.tpx,tpy:p.tpy,human:p.human}));
             }
 
