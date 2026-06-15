@@ -504,6 +504,8 @@
                 this.goalDelayTick=0;
                 this.keeperSave=null; this.keeperTick=0;
                 this.dribbleActive=false; this.dribbleTarget=null; this.dribbleStep=0.0009;
+                this.passActive=false; this.passTarget=null; this.passStep=0.0045;
+                this.dribblerIdx=0; this.shooterIdx=0; this.passPlanned=false;
                 this.kickTick=0; this.kickDuration=18;
                 this._pendingBtpx=0; this._pendingBtpy=0;
                 this._pendingResult=null; this._pendingKeeper=null; this._attackVs="attack-human";
@@ -556,6 +558,8 @@
                 this.goalDelayTick=0;
                 this.keeperSave=null; this.keeperTick=0;
                 this.dribbleActive=false; this.dribbleTarget=null;
+                this.passActive=false; this.passTarget=null; this.passPlanned=false;
+                this.attackVariant=0;
                 this.kickTick=0;
                 this._pendingResult=null; this._pendingKeeper=null;
                 this._form("kickoff");
@@ -578,17 +582,68 @@
                 this.shotStart=null; this.shotTraceTick=0;
                 this.keeperSave=null; this.keeperTick=0;
                 this.kickTick=0;
+                this.passActive=false; this.passTarget=null;
                 this.dribbleActive=true;
-                this.dribbleTarget=this._shotOrigin(humanAttacking);
+                this.attackVariant=Math.floor(Math.random()*3);
+                this.passPlanned=Math.random()<0.38;
+                this.dribblerIdx=humanAttacking?0:2;
+                this.shooterIdx=this.passPlanned
+                    ? (humanAttacking ? 1 : (Math.random()<0.55 ? 3 : 4))
+                    : this.dribblerIdx;
+                this.passTarget=this._shotOrigin(humanAttacking);
+                this.dribbleTarget=this.passPlanned
+                    ? {
+                        px:humanAttacking ? 0.74+Math.random()*0.05 : 0.26-Math.random()*0.05,
+                        py:Math.max(0.32, Math.min(0.68, this.passTarget.py + (Math.random()-.5)*0.16))
+                    }
+                    : this.passTarget;
                 // Ball enters from the correct screen edge
                 this.bpx=humanAttacking ? 0.630 : 0.370;
                 this.bpy=0.41+Math.random()*0.18;
                 // Snap dribbler player to ball start so they move together
-                const dribIdx=humanAttacking?0:2;
+                const dribIdx=this.dribblerIdx;
                 if(this.pl[dribIdx]){
                     const fwd=humanAttacking?0.018:-0.018;
                     this.pl[dribIdx].px=this.bpx+fwd; this.pl[dribIdx].py=this.bpy;
                     this.pl[dribIdx].tpx=this.pl[dribIdx].px; this.pl[dribIdx].tpy=this.bpy;
+                }
+                this._shapeAttack(humanAttacking);
+            }
+
+            _shapeAttack(humanAttacking) {
+                const fwd=humanAttacking?0.018:-0.018;
+                const j=(n)=> (Math.random()-.5)*n;
+                if(this.passPlanned && this.pl[this.shooterIdx]) {
+                    this.pl[this.shooterIdx].tpx=this.passTarget.px+fwd;
+                    this.pl[this.shooterIdx].tpy=this.passTarget.py;
+                }
+                if(humanAttacking) {
+                    if(this.pl[1] && this.shooterIdx!==1){
+                        this.pl[1].tpx=.81+j(.05);
+                        this.pl[1].tpy=(this.attackVariant === 0 ? .58 : this.attackVariant === 1 ? .42 : .66)+j(.06);
+                    }
+                    [
+                        [2,.72+j(.05),.30+j(.08)],
+                        [3,.80+j(.04),this.bpy+j(.10)],
+                        [4,.75+j(.05),.70+j(.08)]
+                    ].forEach(([i,px,py])=>{
+                        if(this.pl[i]){this.pl[i].tpx=Math.max(.64,Math.min(.88,px));this.pl[i].tpy=Math.max(.22,Math.min(.78,py));}
+                    });
+                } else {
+                    if(this.pl[3] && this.shooterIdx!==3){
+                        this.pl[3].tpx=.19+j(.05);
+                        this.pl[3].tpy=(this.attackVariant === 0 ? .58 : this.attackVariant === 1 ? .42 : .66)+j(.06);
+                    }
+                    if(this.pl[4] && this.shooterIdx!==4){
+                        this.pl[4].tpx=.23+j(.04);
+                        this.pl[4].tpy=(this.attackVariant === 2 ? .62 : .70)+j(.06);
+                    }
+                    [
+                        [0,.28+j(.05),.30+j(.08)],
+                        [1,.20+j(.04),this.bpy+j(.10)]
+                    ].forEach(([i,px,py])=>{
+                        if(this.pl[i]){this.pl[i].tpx=Math.max(.12,Math.min(.36,px));this.pl[i].tpy=Math.max(.22,Math.min(.78,py));}
+                    });
                 }
             }
 
@@ -628,6 +683,8 @@
                 this.goalDelayTick=0;
                 this.keeperSave=null; this.keeperTick=0;
                 this.dribbleActive=false; this.dribbleTarget=null;
+                this.passActive=false; this.passTarget=null; this.passPlanned=false;
+                this.attackVariant=0;
                 this.kickTick=0;
                 this._pendingResult=null; this._pendingKeeper=null;
                 this._hideOverlay();
@@ -666,7 +723,7 @@
                 for(const p of this.pl){p.px+=(p.tpx-p.px)*sp;p.py+=(p.tpy-p.py)*sp;}
                 if(this.dribbleActive) {
                     // Phase 1: slow dribble — dribbler player tracks the ball
-                    const dribIdx=this._vs==="attack-ai"?2:0;
+                    const dribIdx=this.dribblerIdx;
                     const fwd=this._vs==="attack-ai"?-0.02:0.02;
                     if(this.pl[dribIdx]){this.pl[dribIdx].tpx=this.bpx+fwd;this.pl[dribIdx].tpy=this.bpy;}
                     const dx=this.dribbleTarget.px-this.bpx, dy=this.dribbleTarget.py-this.bpy;
@@ -674,13 +731,33 @@
                     if(dist<=this.dribbleStep) {
                         this.bpx=this.dribbleTarget.px; this.bpy=this.dribbleTarget.py;
                         this.dribbleActive=false;
-                        this.kickTick=this.kickDuration;
+                        if(this.passPlanned && this.shooterIdx!==this.dribblerIdx) {
+                            this.passActive=true;
+                        } else {
+                            this.kickTick=this.kickDuration;
+                        }
                     } else {
                         this.bpx+=(dx/dist)*this.dribbleStep;
                         this.bpy+=(dy/dist)*this.dribbleStep;
                     }
+                } else if(this.passActive) {
+                    const fwd=this._vs==="attack-ai"?-0.02:0.02;
+                    if(this.pl[this.shooterIdx]){
+                        this.pl[this.shooterIdx].tpx=this.passTarget.px+fwd;
+                        this.pl[this.shooterIdx].tpy=this.passTarget.py;
+                    }
+                    const dx=this.passTarget.px-this.bpx, dy=this.passTarget.py-this.bpy;
+                    const dist=Math.sqrt(dx*dx+dy*dy);
+                    if(dist<=this.passStep) {
+                        this.bpx=this.passTarget.px; this.bpy=this.passTarget.py;
+                        this.passActive=false;
+                        this.kickTick=this.kickDuration;
+                    } else {
+                        this.bpx+=(dx/dist)*this.passStep;
+                        this.bpy+=(dy/dist)*this.passStep;
+                    }
                 } else if(this.kickTick>0) {
-                    const dribIdx=this._vs==="attack-ai"?2:0;
+                    const dribIdx=this.shooterIdx;
                     const fwd=this._vs==="attack-ai"?-0.02:0.02;
                     if(this.pl[dribIdx]){this.pl[dribIdx].tpx=this.bpx+fwd;this.pl[dribIdx].tpy=this.bpy;}
                     this.kickTick--;
@@ -902,6 +979,22 @@
                 g.restore();
             }
 
+            _passLine() {
+                if(!this.passActive || !this.dribbleTarget || !this.passTarget) return;
+                const g=this.g;
+                const a=this._ap(this.dribbleTarget.px,this.dribbleTarget.py);
+                const b=this._ap(this.bpx,this.bpy);
+                g.save();
+                g.strokeStyle="#f7f15b";
+                g.lineWidth=2.5;
+                g.setLineDash([8,8]);
+                g.beginPath();
+                g.moveTo(a.x,a.y);
+                g.lineTo(b.x,b.y);
+                g.stroke();
+                g.restore();
+            }
+
             _drawAttack() {
                 const {g,W,H}=this;
                 g.fillStyle="#00bb00"; g.fillRect(0,0,W,H);
@@ -937,12 +1030,13 @@
                 g.moveTo(gp1.x+gdir*gdepth,gp1.y); g.lineTo(gp2.x+gdir*gdepth,gp2.y);       // back of net
                 g.stroke();
                 // Shot arc and ball
+                this._passLine();
                 this._attackShotArc();
                 if(this.goalTick<=0 && this.goalDelayTick<=0) {
                     const bs=AP(this.bpx,this.bpy);
                     this._ball(bs.x,bs.y,6);
                 }
-                const kickIdx=this.kickTick>0 ? (this._vs==="attack-ai"?2:0) : -1;
+                const kickIdx=this.kickTick>0 ? this.shooterIdx : -1;
                 const kickDir=this._vs==="attack-ai"?-1:1;
                 const kickPower=this.kickTick>0 ? 1-(this.kickTick/this.kickDuration) : 0;
                 for(const p of this.pl){
