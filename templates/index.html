@@ -179,6 +179,7 @@
         const emitGame = (event, payload = {}) => socket.emit(event, { ...(payload || {}), client_id: guestDeviceId });
         let playResponseTimer = null;
         let pendingLineupIn = null;
+        let pendingRolePlayer = null;
         let squadAction = "lineup";
         let restartingSeason = false;
         let transferMessage = "";
@@ -1410,7 +1411,7 @@
                                 <span class="col-status">Lineup</span>
                             </div>
                             <div class="player-list">
-                                ${sortedSquad.filter(p => p.position === pos).map(p => playerRow(p, human.name, true)).join("")}
+                                ${sortedSquad.filter(p => (p.playing_as || p.position) === pos).map(p => playerRow(p, human.name, true)).join("")}
                             </div>
                         </section>
                     `).join("");
@@ -1551,22 +1552,26 @@
             if (owned) {
                 let statusLabel = player.active ? (player.playing_as || player.position) : "Bench";
                 let statusClass = player.active ? "status-playing" : "status-bench";
+                let statusContent = esc(statusLabel);
+                let statusAttrs = "";
                 if (pendingLineupIn) {
-                    if (player.id === pendingLineupIn.id) {
-                        statusLabel = "Selected";
-                        statusClass = "status-swap";
-                    } else if (player.active) {
-                        statusLabel = "Swap";
-                        statusClass = "status-swap";
-                    }
+                    if (player.id === pendingLineupIn.id) { statusLabel = "Selected"; statusClass = "status-swap"; statusContent = esc(statusLabel); }
+                    else if (player.active) { statusLabel = "Swap"; statusClass = "status-swap"; statusContent = esc(statusLabel); }
                 } else if (squadAction === "sell") {
                     statusLabel = state?.transfer_sold_this_window ? "Sold" : "Sell";
                     statusClass = player.injured || state?.transfer_sold_this_window ? "status-disabled" : "status-action";
-                } else if (squadAction === "role") {
-                    statusLabel = ["D", "M", "A"].map(pos =>
-                        `<span class="role-chip ${player.position === pos ? "active" : ""}" data-role="${pos}">${pos}</span>`
-                    ).join("");
-                    statusClass = "status-role";
+                    statusContent = esc(statusLabel);
+                } else if (!player.injured) {
+                    // Role picker popup
+                    statusAttrs = ` data-cycle-role="${esc(player.id)}" data-team="${esc(teamName)}"`;
+                    if (pendingRolePlayer === player.id) {
+                        const curRole = player.active ? (player.playing_as || player.position) : "Bench";
+                        const chips = ["D","M","A","Bench"].map(r =>
+                            `<span class="role-chip${r === curRole ? " role-current" : ""}" data-pick-role="${r === "Bench" ? "" : r}" data-player-id="${esc(player.id)}" data-team="${esc(teamName)}">${r}</span>`
+                        ).join("");
+                        statusContent = `${esc(statusLabel)}<span class="role-picker-popup">${chips}</span>`;
+                        statusClass += " status-picker-open";
+                    }
                 }
                 return `
                 <button type="button"
@@ -1579,7 +1584,7 @@
                     <span>${energyHtml}</span>
                     <span>${fmt(player.value)}</span>
                     <span class="morale-cell">${moraleHtml(player)}</span>
-                    <span class="player-status ${statusClass}"${squadAction !== "sell" && !pendingLineupIn ? ` data-cycle-role="${esc(player.id)}" data-team="${esc(teamName)}"` : ""}>${squadAction === "role" ? statusLabel : esc(statusLabel)}</span>
+                    <span class="player-status ${statusClass}"${statusAttrs}>${statusContent}</span>
                 </button>`;
             }
             const buyDisabled = state?.transfer_bought_this_window ? "disabled" : "";
@@ -1778,15 +1783,20 @@
                 emitGame("buy_player", { team: buy.dataset.team, player_id: buy.dataset.buy });
                 return;
             }
+            const pickRole = e.target.closest("[data-pick-role]");
+            if (pickRole) {
+                const role = pickRole.dataset.pickRole;
+                emitGame("set_player_role", { team: pickRole.dataset.team, player_id: pickRole.dataset.playerId, role });
+                pendingRolePlayer = null;
+                return;
+            }
             const cycleRole = e.target.closest("[data-cycle-role]");
             if (cycleRole) {
                 const human = (state?.human_teams || [])[0];
                 const player = (human?.squad || []).find(p => p.id === cycleRole.dataset.cycleRole);
                 if (player && !player.injured) {
-                    const roles = ["D", "M", "A", ""];
-                    const current = player.active ? (player.playing_as || player.position) : "";
-                    const next = roles[(roles.indexOf(current) + 1) % roles.length];
-                    emitGame("set_player_role", { team: cycleRole.dataset.team, player_id: player.id, role: next });
+                    pendingRolePlayer = pendingRolePlayer === player.id ? null : player.id;
+                    render();
                 }
                 return;
             }
