@@ -546,6 +546,13 @@ select {
     color: var(--muted);
     font-size: 12px;
 }
+.summary-lineup {
+    font-weight: 700;
+    font-size: 13px;
+}
+.summary-lineup strong { font-size: 15px; }
+.lu-ok { color: var(--green); }
+.lu-bad { color: var(--red); }
 .rename-picker {
     display: none;
     align-items: center;

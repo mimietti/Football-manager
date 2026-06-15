@@ -142,9 +142,7 @@
                     <div id="teamSummary" class="team-summary"></div>
                     <div class="management-actions">
                         <div class="squad-action-bar" aria-label="Squad action">
-                            <button type="button" data-squad-action="lineup">Pick/Bench</button>
                             <button type="button" data-squad-action="sell">Sell</button>
-                            <button type="button" data-squad-action="role">Role</button>
                         </div>
                         <button id="continueToMatch" type="button">Continue to match</button>
                     </div>
@@ -1443,6 +1441,7 @@
                 `<span>Loan: <strong>${fmt(team.loan)}</strong></span>` +
                 `<span>Interest: ${fmt(team.loan_interest)}/wk</span>` +
                 `<span>Max: ${fmt(team.loan_limit)}</span>`;
+            const luOk = team.lineup_size === 11;
             document.getElementById("teamSummary").innerHTML =
                 `<div>Cash: ${fmt(team.cash)}</div>` +
                 `<div>Gate: ${fmt(team.gate_money)}</div>` +
@@ -1450,7 +1449,7 @@
                 `<div>Rent: ${fmt(team.ground_rent)}/wk</div>` +
                 `<div>Squad: ${team.squad_size}/${team.max_squad_size}</div>` +
                 `<div>Morale: ${team.retro_morale}/20</div>` +
-                `<div>Lineup: ${team.lineup_size}/11</div>`;
+                `<div class="summary-lineup ${luOk ? "lu-ok" : "lu-bad"}">Lineup: <strong>${team.lineup_size}/11</strong></div>`;
         }
 
         function posLabel(pos) {
