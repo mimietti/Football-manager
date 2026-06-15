@@ -205,7 +205,8 @@
             }
             const playButton = document.getElementById("playRound");
             playButton.textContent = "Play";
-            playButton.disabled = state?.season_over ?? false;
+            const _lu = (state?.human_teams?.[0]?.lineup_size ?? 0) === 11;
+            playButton.disabled = (state?.season_over ?? false) || !_lu;
         }
 
         function applyUiPhase() {
@@ -276,7 +277,7 @@
                 <table class="prematch-table">
                     <thead><tr>
                         <th></th>
-                        <th class="pm-human">${esc(humanName)}</th>
+                        <th class="pm-human"><span>${esc(humanName)}</span><button class="pm-rename-btn" type="button" data-pm-rename="1">Rename</button></th>
                         <th class="pm-ai">${esc(pm.opponent)}</th>
                     </tr></thead>
                     <tbody>${rows.map(([label, h, a]) => `
@@ -287,7 +288,7 @@
                         </tr>`).join("")}
                     </tbody>
                 </table>
-                <div class="pm-picked"><span>PLAYERS PICKED=${pm.human.lineup_size}</span><span class="pm-formation">${squadFormation(state.human_teams?.[0]?.squad || [])}</span></div>`;
+                <div class="pm-picked"><span class="${pm.human.lineup_size === 11 ? "pm-ok" : "pm-bad"}">PLAYERS PICKED=${pm.human.lineup_size}</span><span class="pm-formation">${squadFormation(state.human_teams?.[0]?.squad || [])}</span></div>`;
         }
 
         function renderOtherMatches(matches, division) {
@@ -343,6 +344,14 @@
                 const humanIsHome = m.home === humanName;
                 const viz = ensureViz();
                 viz.reset(m.home, m.away);
+                const aiCol = viz.aiColor;
+
+                const shirtSvg = (fill, stroke) =>
+                    `<svg class="shirt-icon" viewBox="0 0 24 24" width="16" height="16"><path d="M8,2 Q12,6 16,2 L22,7 L17,9 L17,22 L7,22 L7,9 L2,7 Z" fill="${fill}" stroke="${stroke}" stroke-width="1.2"/></svg>`;
+                const humanShirt = shirtSvg("#ffffff", "#555555");
+                const aiShirt    = shirtSvg(aiCol, aiCol === "#111111" ? "#555555" : "rgba(0,0,0,0.35)");
+                const homeShirt  = humanIsHome ? humanShirt : aiShirt;
+                const awayShirt  = humanIsHome ? aiShirt    : humanShirt;
 
                 const article = document.createElement("article");
                 article.className = "report";
@@ -350,7 +359,10 @@
 
                 const scoreEl = document.createElement("div");
                 scoreEl.className = "score";
-                scoreEl.textContent = `${m.home} 0 – 0 ${m.away}`;
+                scoreEl.innerHTML =
+                    `<span class="score-team">${homeShirt}${esc(m.home)}</span>` +
+                    `<span class="score-result">0 – 0</span>` +
+                    `<span class="score-team score-right">${esc(m.away)}${awayShirt}</span>`;
                 article.appendChild(scoreEl);
 
                 const ul = document.createElement("ul");
@@ -379,7 +391,7 @@
                         if (sg) {
                             curHome = parseInt(sg[1]);
                             curAway = parseInt(sg[2]);
-                            scoreEl.textContent = `${m.home} ${curHome} – ${curAway} ${m.away}`;
+                            scoreEl.querySelector(".score-result").textContent = `${curHome} – ${curAway}`;
                         }
                         const humanScored = humanIsHome ? curHome > prevHome : curAway > prevAway;
                         viz.setScore(curHome, curAway);
@@ -448,7 +460,8 @@
                 }
             }
 
-            document.getElementById("playRound").disabled = state?.season_over ?? false;
+            const _ok = (state?.human_teams?.[0]?.lineup_size ?? 0) === 11;
+            document.getElementById("playRound").disabled = (state?.season_over ?? false) || !_ok;
         }
 
         // ── Canvas pitch visualiser ───────────────────────────────────────────
@@ -463,6 +476,7 @@
                 this.H = par.clientHeight || 420;
                 this.cv.width = this.W; this.cv.height = this.H;
                 this.homeTeam = ""; this.awayTeam = "";
+                this.aiColor = "#111111";
                 this.hg = 0; this.ag = 0;
                 this.phase = 0;
                 this.goalTick = 0; this.goalHuman = true;
@@ -528,6 +542,8 @@
 
             reset(home, away) {
                 this.homeTeam=home; this.awayTeam=away;
+                const _pal=["#111111","#cc2222","#1155cc"];
+                this.aiColor=_pal[Math.floor(Math.random()*_pal.length)];
                 this.hg=0; this.ag=0; this._vs="kickoff";
                 this.goalTick=0; this.bannType=null; this.bannTick=0;
                 this.shotActive=false; this._pending=null;
@@ -976,7 +992,7 @@
             }
 
             _fig(x, y, isHome, run) {
-                const g=this.g,c=isHome?"#ffffff":"#111111",s=14,ph=this.phase;
+                const g=this.g,c=isHome?"#ffffff":this.aiColor,s=14,ph=this.phase;
                 g.strokeStyle=c; g.fillStyle=c; g.lineWidth=1.5;
                 g.beginPath(); g.arc(x,y-s*.65,s*.18,0,Math.PI*2); g.fill();
                 g.beginPath(); g.moveTo(x,y-s*.45); g.lineTo(x,y); g.stroke();
@@ -988,7 +1004,7 @@
             }
 
             _keeper(x, y, isHome) {
-                const g=this.g,c=isHome?"#ffffff":"#111111",s=13,ph=this.phase;
+                const g=this.g,c=isHome?"#ffffff":this.aiColor,s=13,ph=this.phase;
                 g.strokeStyle=c; g.fillStyle=c; g.lineWidth=1.8;
                 g.beginPath(); g.arc(x,y-s*.70,s*.18,0,Math.PI*2); g.fill();
                 g.beginPath(); g.moveTo(x,y-s*.50); g.lineTo(x,y+s*.10); g.stroke();
@@ -1088,7 +1104,8 @@
                 : `Division ${state.division} · Match ${state.league_match + 1}`;
 
             // Play / end-season buttons
-            document.getElementById("playRound").disabled = state.season_over || waitingForMatch;
+            const _lineupOk = (state?.human_teams?.[0]?.lineup_size ?? 0) === 11;
+            document.getElementById("playRound").disabled = state.season_over || waitingForMatch || !_lineupOk;
             document.getElementById("endSeason").style.display =
                 state.season_over ? "inline-flex" : "none";
             document.getElementById("editSquad").style.display =
@@ -1166,7 +1183,8 @@
                                 <span>Skills</span>
                                 <span>Energy</span>
                                 <span>Value</span>
-                                <span>Status</span>
+                                <span>Morale</span>
+                                <span class="col-status">Status</span>
                             </div>
                             <div class="player-list">
                                 ${sortedSquad.filter(p => p.position === pos).map(p => playerRow(p, human.name, true)).join("")}
@@ -1323,11 +1341,11 @@
                     data-player-select="${esc(player.id)}" data-team="${esc(teamName)}">
                     <span class="player-name-cell">
                         <strong class="${pc}">${esc(player.name)}${inj}</strong>
-                        <small class="morale-hint">${moraleHtml(player)}</small>
                     </span>
                     <span class="skill-profile">${skills}</span>
                     <span>${energyHtml}</span>
                     <span>${fmt(player.value)}</span>
+                    <span class="morale-cell">${moraleHtml(player)}</span>
                     <span class="player-status ${statusClass}">${esc(statusLabel)}</span>
                 </button>`;
             }
@@ -1337,11 +1355,11 @@
                 data-buy="${esc(player.id)}" data-team="${esc(teamName)}" ${buyDisabled}>
                 <span class="player-name-cell">
                     <strong class="${pc}">${esc(player.name)}</strong>
-                    <small class="morale-hint">${moraleHtml(player)}</small>
                 </span>
                 <span class="skill-profile">${skills}</span>
                 <span>${energyHtml}</span>
                 <span>${fmt(player.value)}</span>
+                <span class="morale-cell">${moraleHtml(player)}</span>
                 <span class="player-status status-action">Sign</span>
             </button>`;
         }
@@ -1413,6 +1431,13 @@
         document.getElementById("editSquad").addEventListener("click", () => {
             uiPhase = "management";
             render();
+        });
+
+        document.getElementById("preMatchContent").addEventListener("click", e => {
+            if (!e.target.closest("[data-pm-rename]")) return;
+            const team = (state?.human_teams?.[0])?.name || "";
+            const name = prompt("New club name", team);
+            if (name) socket.emit("rename_team", { team, name });
         });
 
         document.getElementById("closeReport").addEventListener("click", () => {

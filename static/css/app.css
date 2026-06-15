@@ -593,7 +593,7 @@ select {
 }
 .squad-table-head {
     display: grid;
-    grid-template-columns: minmax(90px, 170px) 86px 64px 92px 74px;
+    grid-template-columns: minmax(90px, 170px) 86px 64px 92px 68px 52px;
     gap: 6px;
     align-items: center;
     padding: 2px 6px;
@@ -618,7 +618,7 @@ select {
 }
 .player-row {
     display: grid;
-    grid-template-columns: minmax(90px, 170px) 86px 64px 92px 74px;
+    grid-template-columns: minmax(90px, 170px) 86px 64px 92px 68px 52px;
     gap: 6px;
     align-items: center;
     padding: 3px 6px;
@@ -692,6 +692,16 @@ button.player-row:hover {
     color: var(--muted);
     font-style: normal;
 }
+.morale-cell {
+    font-size: 11px;
+    color: var(--muted);
+    display: flex;
+    flex-direction: column;
+    gap: 1px;
+    line-height: 1.2;
+}
+.morale-cell .morale-val { color: var(--fg); }
+.col-status { text-align: center; }
 .morale-up { color: var(--green); }
 .morale-dn { color: var(--red); }
 .skill-profile {
@@ -748,10 +758,21 @@ tr.player {
 }
 .score {
     color: #fff8c7;
-    font-size: 22px;
+    font-size: 20px;
     font-weight: 900;
-    text-align: center;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 10px;
 }
+.score-team {
+    display: flex;
+    align-items: center;
+    gap: 5px;
+}
+.score-right { flex-direction: row-reverse; }
+.score-result { font-size: 1.1em; letter-spacing: 0.04em; }
+.shirt-icon { flex-shrink: 0; }
 .latest-match ul {
     margin: 8px 0 0;
     padding-left: 0;
@@ -911,6 +932,20 @@ em.inj {
 .prematch-table td:first-child { text-align: left; }
 .prematch-table th.pm-human { color: var(--green); }
 .prematch-table th.pm-ai { color: var(--red); }
+.pm-rename-btn {
+    margin-left: 8px;
+    padding: 1px 7px;
+    font-size: 10px;
+    font-family: inherit;
+    background: rgba(214,199,93,0.12);
+    border: 1px solid rgba(214,199,93,0.40);
+    border-radius: 3px;
+    color: var(--accent);
+    cursor: pointer;
+    vertical-align: middle;
+    letter-spacing: 0.04em;
+}
+.pm-rename-btn:hover { background: rgba(214,199,93,0.25); }
 .pm-label { color: var(--muted); }
 .pm-human { color: var(--green); }
 .pm-ai { color: var(--red); }
@@ -931,6 +966,16 @@ em.inj {
     background: rgba(214,199,93,0.1);
     border: 1px solid rgba(214,199,93,0.35);
     border-radius: 3px;
+}
+.pm-picked .pm-ok {
+    background: rgba(117,212,131,0.12);
+    border-color: rgba(117,212,131,0.40);
+    color: var(--green);
+}
+.pm-picked .pm-bad {
+    background: rgba(220,80,80,0.12);
+    border-color: rgba(220,80,80,0.40);
+    color: var(--red);
 }
 .pm-formation {
     margin-left: 8px;
