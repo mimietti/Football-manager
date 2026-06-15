@@ -107,10 +107,6 @@
         <!-- Squad management -->
         <section id="managementLayout" class="layout management-layout" style="display:none">
             <div class="panel">
-                <div id="transferPanel" class="transfer-inline" style="display:none">
-                    <h2>Transfer Window</h2>
-                    <div id="transferMarket" class="player-list"></div>
-                </div>
                 <div class="panel-title-row">
                     <div class="title-left">
                         <h2>Squad — <span id="squadTeamName"></span></h2>
@@ -124,20 +120,28 @@
                     <button id="renamePlayerConfirm" type="button">Rename</button>
                     <button id="renamePlayerCancel" type="button">✕</button>
                 </div>
-                <div id="loanBlock" class="loan-block">
-                    <div id="loanInfo" class="loan-info"></div>
-                    <div class="loan-controls">
-                        <input id="loanAmount" type="number" min="1000" step="1000" value="10000" placeholder="£ amount">
-                        <button id="borrowButton" type="button">Borrow</button>
-                        <button id="repayButton" type="button">Repay</button>
+                <div class="management-top">
+                    <div id="transferPanel" class="transfer-inline" style="display:none">
+                        <h2>Transfer Window</h2>
+                        <div id="transferMarket" class="player-list"></div>
+                    </div>
+                    <div id="loanBlock" class="loan-block">
+                        <div id="loanInfo" class="loan-info"></div>
+                        <div class="loan-controls">
+                            <input id="loanAmount" type="number" min="1000" step="1000" value="10000" placeholder="£ amount">
+                            <button id="borrowButton" type="button">Borrow</button>
+                            <button id="repayButton" type="button">Repay</button>
+                        </div>
                     </div>
                 </div>
-                <div id="teamSummary" class="team-summary"></div>
-                <div class="management-actions">
-                    <div class="squad-action-bar" aria-label="Squad action">
-                        <button type="button" data-squad-action="sell">Sell</button>
+                <div class="management-strip">
+                    <div id="teamSummary" class="team-summary"></div>
+                    <div class="management-actions">
+                        <div class="squad-action-bar" aria-label="Squad action">
+                            <button type="button" data-squad-action="sell">Sell</button>
+                        </div>
+                        <button id="continueToMatch" type="button">Continue to match</button>
                     </div>
-                    <button id="continueToMatch" type="button">Continue to match</button>
                 </div>
                 <div id="squadList" class="player-list squad-grid"></div>
             </div>
@@ -1195,6 +1199,7 @@
             // Transfer market — only visible after a match
             const transferPanel = document.getElementById("transferPanel");
             transferPanel.style.display = state.transfer_window ? "" : "none";
+            document.querySelector(".management-top")?.classList.toggle("no-transfer", !state.transfer_window);
             if (state.transfer_window) {
                 document.getElementById("transferMarket").innerHTML =
                     (state.transfer_market || []).length

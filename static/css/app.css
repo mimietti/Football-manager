@@ -228,13 +228,11 @@ button:disabled {
     display: flex;
     flex-direction: column;
 }
-.management-layout .transfer-inline { order: 1; }
-.management-layout .panel-title-row { order: 2; }
-.management-layout .rename-picker { order: 3; }
-.management-layout .loan-block { order: 4; }
-.management-layout .team-summary { order: 5; }
-.management-layout .management-actions { order: 6; }
-.management-layout .squad-grid { order: 7; }
+.management-layout .panel-title-row { order: 1; }
+.management-layout .rename-picker { order: 2; }
+.management-layout .management-top { order: 3; }
+.management-layout .management-strip { order: 4; }
+.management-layout .squad-grid { order: 5; }
 .panel,
 .match-panel {
     padding: 12px;
@@ -510,8 +508,7 @@ select {
 .team-summary {
     display: flex;
     flex-wrap: wrap;
-    gap: 2px 16px;
-    margin-bottom: 6px;
+    gap: 2px 14px;
     color: var(--muted);
     font-size: 12px;
 }
@@ -540,25 +537,30 @@ select {
 .loan-block {
     border: 1px solid var(--line);
     border-radius: 10px;
-    padding: 10px 12px;
-    margin-bottom: 8px;
+    padding: 8px 10px;
+    margin-bottom: 0;
     display: flex;
-    flex-direction: column;
-    gap: 8px;
+    flex-direction: row;
+    align-items: center;
+    gap: 10px;
+    min-width: 0;
 }
 .loan-info {
     display: flex;
     flex-wrap: wrap;
     gap: 4px 16px;
     font-size: 13px;
+    min-width: 260px;
 }
 .loan-info strong {
     color: var(--accent);
 }
 .loan-controls {
     display: grid;
-    grid-template-columns: 1fr auto auto;
+    grid-template-columns: minmax(110px, 1fr) auto auto;
     gap: 8px;
+    flex: 1;
+    min-width: 0;
 }
 .loan-controls input {
     padding: 6px 10px;
@@ -574,7 +576,24 @@ select {
     align-items: center;
     justify-content: space-between;
     flex-wrap: wrap;
-    margin: 0 0 8px;
+    margin: 0;
+}
+.management-top {
+    display: grid;
+    grid-template-columns: minmax(360px, 0.75fr) minmax(520px, 1.25fr);
+    gap: 8px;
+    align-items: stretch;
+    margin-bottom: 8px;
+}
+.management-top.no-transfer {
+    grid-template-columns: minmax(0, 1fr);
+}
+.management-strip {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) auto;
+    gap: 12px;
+    align-items: center;
+    margin-bottom: 8px;
 }
 .squad-action-bar {
     display: flex;
@@ -600,7 +619,7 @@ select {
     gap: 3px;
 }
 .squad-grid {
-    grid-template-columns: repeat(auto-fit, minmax(490px, 1fr));
+    grid-template-columns: repeat(auto-fit, minmax(430px, 1fr));
     align-items: start;
 }
 .squad-column {
@@ -616,7 +635,7 @@ select {
 }
 .squad-table-head {
     display: grid;
-    grid-template-columns: minmax(90px, 170px) 86px 64px 92px 68px 52px;
+    grid-template-columns: minmax(90px, 1.15fr) 86px 62px 88px 62px 48px;
     gap: 6px;
     align-items: center;
     padding: 2px 6px;
@@ -628,11 +647,12 @@ select {
     text-transform: uppercase;
 }
 .transfer-inline {
-    margin-bottom: 6px;
+    margin-bottom: 0;
     padding: 8px 10px;
     border: 1px solid rgba(214,199,93,0.22);
     border-radius: 8px;
     background: rgba(214,199,93,0.07);
+    min-width: 0;
 }
 .transfer-inline h2 {
     font-size: 13px;
@@ -641,16 +661,16 @@ select {
 }
 .player-row {
     display: grid;
-    grid-template-columns: minmax(90px, 170px) 86px 64px 92px 68px 52px;
+    grid-template-columns: minmax(90px, 1.15fr) 86px 62px 88px 62px 48px;
     gap: 6px;
     align-items: center;
-    padding: 3px 6px;
+    padding: 2px 6px;
     border: 1px solid rgba(255,255,255,0.08);
     border-radius: 4px;
     background: rgba(0,0,0,0.16);
     font-family: "Courier New", monospace;
-    font-size: 14px;
-    line-height: 1.18;
+    font-size: 13px;
+    line-height: 1.12;
 }
 button.player-row {
     width: 100%;
@@ -703,7 +723,7 @@ button.player-row:hover {
 .player-row span {
     margin-top: 0;
     color: var(--muted);
-    font-size: 14px;
+    font-size: 13px;
 }
 .player-row .player-name-cell {
     display: flex;
@@ -1152,7 +1172,9 @@ em.inj {
         display: grid;
     }
     #reportLayout,
-    .other-matches-grid {
+    .other-matches-grid,
+    .management-top,
+    .management-strip {
         grid-template-columns: 1fr;
     }
     .new-season {
@@ -1160,6 +1182,13 @@ em.inj {
     }
     .finance-actions {
         grid-template-columns: 132px auto auto;
+    }
+    .loan-block {
+        align-items: stretch;
+        flex-direction: column;
+    }
+    .loan-info {
+        min-width: 0;
     }
     .panel-title-row {
         align-items: flex-start;
