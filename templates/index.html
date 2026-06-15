@@ -782,11 +782,11 @@
                 while(d+m+a<11) m++;
                 while(d+m+a>11){ if(m>0)m--; else if(d>0)d--; else a--; }
                 // First D (or M if no D) becomes GK at far post
-                if(d>0){fm.push({px:.03,py:.50,tpx:.03,tpy:.50,human:true});d--;}
-                else if(m>0){fm.push({px:.03,py:.50,tpx:.03,tpy:.50,human:true});m--;}
+                if(d>0){fm.push({px:.03,py:.50,tpx:.03,tpy:.50,human:true,isGK:true});d--;}
+                else if(m>0){fm.push({px:.03,py:.50,tpx:.03,tpy:.50,human:true,isGK:true});m--;}
                 spread(d,.14,true); spread(m,.31,true); spread(a,.49,true);
                 // AI: 1 GK + 4D + 4M + 2A = 11
-                fm.push({px:.97,py:.50,tpx:.97,tpy:.50,human:false});
+                fm.push({px:.97,py:.50,tpx:.97,tpy:.50,human:false,isGK:true});
                 spread(4,.86,false); spread(4,.69,false); spread(2,.51,false);
                 this.fmPl=fm.map(p=>({px:p.px,py:p.py,tpx:p.tpx,tpy:p.tpy,human:p.human}));
             }
@@ -1201,7 +1201,16 @@
                 this._ball(bs.x,bs.y,6);
                 for(const p of this.fmPl){
                     const s=this._ps(p.px,p.py);
-                    this._fig(s.x,s.y,p.human,false,0,0,10);
+                    this._fig(s.x,s.y,p.human,false,0,0,p.isGK?12:10);
+                    if(p.isGK){
+                        g.save();
+                        g.font="bold 9px monospace";
+                        g.textAlign="center";
+                        g.textBaseline="bottom";
+                        g.fillStyle=p.human?"#ffffff":this.aiColor;
+                        g.fillText("G",s.x,s.y-14);
+                        g.restore();
+                    }
                 }
                 const kickIdx=this.kickTick>0 ? this.shooterIdx : -1;
                 const kickDir=this._vs==="attack-ai"?-1:1;
@@ -1445,13 +1454,19 @@
                                 <span class="col-status">Lineup</span>
                             </div>
                             <div class="player-list">
-                                ${sortedSquad
-                                    .filter(p => (p.playing_as || p.position) === pos)
-                                    .sort((a, b) => {
-                                        if (a.active !== b.active) return a.active ? -1 : 1;
-                                        return String(a.name).localeCompare(String(b.name));
-                                    })
-                                    .map(p => playerRow(p, human.name, true)).join("")}
+                                ${(() => {
+                                    const rows = sortedSquad
+                                        .filter(p => (p.playing_as || p.position) === pos)
+                                        .sort((a, b) => {
+                                            if (a.active !== b.active) return a.active ? -1 : 1;
+                                            return String(a.name).localeCompare(String(b.name));
+                                        });
+                                    // First active D is the goalkeeper
+                                    const gkId = pos === "D"
+                                        ? (rows.find(p => p.active)?.id ?? null)
+                                        : null;
+                                    return rows.map(p => playerRow(p, human.name, true, p.id === gkId)).join("");
+                                })()}
                             </div>
                         </section>
                     `).join("");
@@ -1585,13 +1600,13 @@
             return `<span class="morale-val">M·${m}</span>${dStr ? `<span class="${dc}"> ${dStr}</span>` : ""}`;
         }
 
-        function playerRow(player, teamName, owned) {
+        function playerRow(player, teamName, owned, isGK=false) {
             const inj = player.injured ? ` <em class="inj">INJ</em>` : "";
             const pc = posClass(player.position);
             const energyHtml = `<em class="energy-value ${energyClass(player.energy)}">${player.energy}/20</em>`;
             const skills = skillProfile(player);
             if (owned) {
-                let statusLabel = player.active ? (player.playing_as || player.position) : "Bench";
+                let statusLabel = player.active ? (isGK ? "G" : (player.playing_as || player.position)) : "Bench";
                 let statusClass = player.active ? "status-playing" : "status-bench";
                 let statusContent = esc(statusLabel);
                 let statusAttrs = "";
