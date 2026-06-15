@@ -20,8 +20,8 @@
                 <form id="newSeasonForm" class="new-season">
                     <input id="managerName" type="hidden" value="{{ username }}">
                     <button type="submit">Choose Team →</button>
-                    <a href="/logout" style="font-size:12px;color:rgba(245,246,232,0.45);text-decoration:none;align-self:center">Sign out</a>
                 </form>
+                <a id="signOutLink" class="sign-out-link" href="/logout" style="display:none">Sign out</a>
             </div>
             <div id="teamPicker" class="team-picker" style="display:none">
                 <div class="team-picker-header">
@@ -33,7 +33,7 @@
         </section>
 
         <!-- Status bar -->
-        <section class="status-bar">
+        <section id="statusBar" class="status-bar" style="display:none">
             <span id="statusDivision"></span>
             <span id="statusSeason"></span>
             <span id="statusLeague"></span>
@@ -42,7 +42,7 @@
         </section>
 
         <!-- Controls row -->
-        <section id="setupControls" class="controls">
+        <section id="setupControls" class="controls" style="display:none">
             <div class="panel">
                 <h2>Engine</h2>
                 <div class="button-row">
@@ -217,8 +217,10 @@
         function applyUiPhase() {
             if (!state) return;
             const phase = uiPhase;
-            document.getElementById("setupControls").style.display = phase === "pre" ? "" : "none";
-            document.getElementById("preMatchPanel").style.display = phase === "pre" ? "" : "none";
+            const hasActiveGame = (state.human_teams || []).length > 0;
+            document.getElementById("statusBar").style.display = hasActiveGame ? "" : "none";
+            document.getElementById("setupControls").style.display = (hasActiveGame && phase === "pre") ? "" : "none";
+            document.getElementById("preMatchPanel").style.display = (hasActiveGame && phase === "pre") ? "" : "none";
             document.getElementById("matchVisual").style.display = phase === "playing" ? "" : "none";
             document.getElementById("reportLayout").style.display =
                 (phase === "playing" || phase === "report") ? "" : "none";
@@ -1222,6 +1224,7 @@
             const hasActiveGame = (state.human_teams || []).length > 0;
             document.getElementById("heroContent").style.display = "";
             document.getElementById("newSeasonForm").style.display = hasActiveGame ? "none" : "";
+            document.getElementById("signOutLink").style.display = hasActiveGame ? "" : "none";
             if (hasActiveGame) {
                 document.getElementById("teamPicker").style.display = "none";
             }

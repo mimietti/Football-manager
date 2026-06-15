@@ -168,6 +168,16 @@ button:disabled {
     flex-wrap: wrap;
     justify-content: flex-end;
 }
+.sign-out-link {
+    align-self: center;
+    color: rgba(245,246,232,0.45);
+    font-size: 12px;
+    font-weight: 800;
+    text-decoration: none;
+}
+.sign-out-link:hover {
+    color: var(--accent);
+}
 .new-season textarea {
     min-width: 190px;
     min-height: 78px;
