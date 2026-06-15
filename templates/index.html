@@ -213,8 +213,8 @@
             }
             const playButton = document.getElementById("playRound");
             playButton.textContent = "Play";
-            const _lu = (state?.human_teams?.[0]?.lineup_size ?? 0) === 11;
-            playButton.disabled = (state?.season_over ?? false) || !_lu;
+            const _canPlay = (state?.human_teams?.[0]?.lineup_size ?? 0) > 0;
+            playButton.disabled = (state?.season_over ?? false) || !_canPlay;
         }
 
         function applyUiPhase() {
@@ -487,8 +487,8 @@
                 }
             }
 
-            const _ok = (state?.human_teams?.[0]?.lineup_size ?? 0) === 11;
-            document.getElementById("playRound").disabled = (state?.season_over ?? false) || !_ok;
+            const _canPlay = (state?.human_teams?.[0]?.lineup_size ?? 0) > 0;
+            document.getElementById("playRound").disabled = (state?.season_over ?? false) || !_canPlay;
         }
 
         // ── Canvas pitch visualiser ───────────────────────────────────────────
@@ -1294,8 +1294,8 @@
                 : `Division ${state.division} · Match ${state.league_match + 1}`;
 
             // Play / end-season buttons
-            const _lineupOk = (state?.human_teams?.[0]?.lineup_size ?? 0) === 11;
-            document.getElementById("playRound").disabled = state.season_over || waitingForMatch || !_lineupOk;
+            const _canPlay = (state?.human_teams?.[0]?.lineup_size ?? 0) > 0;
+            document.getElementById("playRound").disabled = state.season_over || waitingForMatch || !_canPlay;
             document.getElementById("endSeason").style.display =
                 state.season_over ? "inline-flex" : "none";
             document.getElementById("editSquad").style.display =

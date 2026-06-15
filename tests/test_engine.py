@@ -61,6 +61,17 @@ def test_retro_season_can_play_a_round():
     assert season.retro_ml == 1 or season.retro_cup_round >= 1  # something advanced
 
 
+def test_retro_season_can_play_with_short_lineup():
+    season = create_new_season(["Tester"])
+    human = season.human_teams()[0]
+    human.lineup_ids = human.lineup_ids[:10]
+
+    results = season.play_round()
+
+    assert results
+    assert len(human.lineup_ids) == 10
+
+
 def test_retro_season_15_league_matches():
     season = create_new_season(["Tester"])
     # Play through all 15 league matches (and any cup rounds)
