@@ -114,14 +114,8 @@
                     <div class="title-left">
                         <h2>Squad — <span id="squadTeamName"></span></h2>
                         <button id="renameTeamButton" class="title-action" type="button">Rename Club</button>
-                        <button id="renamePlayerButton" class="title-action" type="button">Rename Player</button>
                     </div>
                     <span id="lineupBadge" class="lineup-badge"></span>
-                </div>
-                <div id="renamePlayerPicker" class="rename-picker" style="display:none">
-                    <select id="renamePlayerSelect"></select>
-                    <button id="renamePlayerConfirm" type="button">Rename</button>
-                    <button id="renamePlayerCancel" type="button">✕</button>
                 </div>
                 <div class="management-top">
                     <div id="transferPanel" class="transfer-inline" style="display:none">
@@ -1577,7 +1571,7 @@
                     class="player-row player-select ${player.active ? "active-player" : ""} ${player.injured ? "injured-player" : ""}"
                     data-player-select="${esc(player.id)}" data-team="${esc(teamName)}">
                     <span class="player-name-cell">
-                        <strong class="${pc}">${esc(player.name)}${inj}</strong>
+                        <strong class="${pc}" data-rename-player="${esc(player.id)}" data-team="${esc(teamName)}" data-current-name="${esc(player.name)}">${esc(player.name)}${inj}</strong>
                     </span>
                     <span class="skill-profile">${skills}</span>
                     <span>${energyHtml}</span>
@@ -1726,33 +1720,6 @@
             if (name) emitGame("rename_team", { team, name });
         });
 
-        document.getElementById("renamePlayerButton").addEventListener("click", () => {
-            const human = (state?.human_teams || [])[0];
-            if (!human) return;
-            const select = document.getElementById("renamePlayerSelect");
-            select.innerHTML = (human.squad || [])
-                .map(p => `<option value="${esc(p.id)}">${esc(p.name)}</option>`)
-                .join("");
-            document.getElementById("renamePlayerPicker").style.display = "flex";
-        });
-
-        document.getElementById("renamePlayerConfirm").addEventListener("click", () => {
-            const human = (state?.human_teams || [])[0];
-            if (!human) return;
-            const select = document.getElementById("renamePlayerSelect");
-            const playerId = select.value;
-            const player = (human.squad || []).find(p => p.id === playerId);
-            if (!player) return;
-            const name = prompt("New name for " + player.name, player.name);
-            if (name) {
-                emitGame("rename_player", { team: human.name, player_id: playerId, name });
-                document.getElementById("renamePlayerPicker").style.display = "none";
-            }
-        });
-
-        document.getElementById("renamePlayerCancel").addEventListener("click", () => {
-            document.getElementById("renamePlayerPicker").style.display = "none";
-        });
 
         document.querySelectorAll("[data-mode]").forEach(b =>
             b.addEventListener("click", () =>
@@ -1787,6 +1754,17 @@
                 const role = pickRole.dataset.pickRole;
                 emitGame("set_player_role", { team: pickRole.dataset.team, player_id: pickRole.dataset.playerId, role });
                 pendingRolePlayer = null;
+                return;
+            }
+            const renameP = e.target.closest("[data-rename-player]");
+            if (renameP) {
+                const currentName = renameP.dataset.currentName || "";
+                const name = prompt("Rename player", currentName);
+                if (name && name.trim()) emitGame("rename_player", {
+                    team: renameP.dataset.team,
+                    player_id: renameP.dataset.renamePlayer,
+                    name: name.trim(),
+                });
                 return;
             }
             const cycleRole = e.target.closest("[data-cycle-role]");
@@ -1877,15 +1855,6 @@
                 pendingLineupIn = null;
                 emitGame("toggle_lineup", { team: lineup.dataset.team, player_id: lineup.dataset.lineup });
                 return;
-            }
-            const renameP = e.target.closest("[data-rename-player]");
-            if (renameP) {
-                const name = prompt("New player name");
-                if (name) emitGame("rename_player", {
-                    team: renameP.dataset.team,
-                    player_id: renameP.dataset.renamePlayer,
-                    name,
-                });
             }
         });
 
