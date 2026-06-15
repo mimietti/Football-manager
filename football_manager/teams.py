@@ -284,8 +284,6 @@ class Team:
                 raise ValueError("Must have at least 1 player in lineup")
             self.lineup_ids.remove(player_id)
         else:
-            if len(self.lineup_ids) >= LINEUP_SIZE:
-                raise ValueError("Lineup already has 11 — bench someone first")
             player = next((p for p in self.squad if p.id == player_id), None)
             if not player:
                 raise ValueError("Player not found")
@@ -319,8 +317,6 @@ class Team:
             if player.id not in self.lineup_ids:
                 if player.injured_weeks > 0:
                     raise ValueError("Player is injured")
-                if len(self.lineup_ids) >= LINEUP_SIZE:
-                    raise ValueError("Lineup is full (11 players)")
                 self.lineup_ids.append(player.id)
         else:  # bench
             player.playing_as = ""
