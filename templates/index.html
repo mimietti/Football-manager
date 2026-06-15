@@ -231,7 +231,7 @@
             }
             const playButton = document.getElementById("playRound");
             playButton.textContent = "Play";
-            const _canPlay = (state?.human_teams?.[0]?.lineup_size ?? 0) === 11;
+            const _canPlay = (state?.human_teams?.[0]?.lineup_size ?? 0) >= 1 && (state?.human_teams?.[0]?.lineup_size ?? 0) <= 11;
             playButton.disabled = (state?.season_over ?? false) || !_canPlay;
         }
 
@@ -519,7 +519,7 @@
                 }
             }
 
-            const _canPlay = (state?.human_teams?.[0]?.lineup_size ?? 0) === 11;
+            const _canPlay = (state?.human_teams?.[0]?.lineup_size ?? 0) >= 1 && (state?.human_teams?.[0]?.lineup_size ?? 0) <= 11;
             document.getElementById("playRound").disabled = (state?.season_over ?? false) || !_canPlay;
         }
 
@@ -1340,7 +1340,7 @@
                 : `Division ${state.division} · Match ${state.league_match + 1}`;
 
             // Play / end-season buttons
-            const _canPlay = (state?.human_teams?.[0]?.lineup_size ?? 0) === 11;
+            const _canPlay = (state?.human_teams?.[0]?.lineup_size ?? 0) >= 1 && (state?.human_teams?.[0]?.lineup_size ?? 0) <= 11;
             document.getElementById("playRound").disabled = state.season_over || waitingForMatch || !_canPlay;
             document.getElementById("continueToMatch").disabled = !_canPlay;
             document.getElementById("endSeason").style.display =
@@ -1424,7 +1424,13 @@
                                 <span class="col-status">Lineup</span>
                             </div>
                             <div class="player-list">
-                                ${sortedSquad.filter(p => (p.playing_as || p.position) === pos).map(p => playerRow(p, human.name, true)).join("")}
+                                ${sortedSquad
+                                    .filter(p => (p.playing_as || p.position) === pos)
+                                    .sort((a, b) => {
+                                        if (a.active !== b.active) return a.active ? -1 : 1;
+                                        return String(a.name).localeCompare(String(b.name));
+                                    })
+                                    .map(p => playerRow(p, human.name, true)).join("")}
                             </div>
                         </section>
                     `).join("");
