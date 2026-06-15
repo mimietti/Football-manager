@@ -653,6 +653,12 @@
                     this.pl[dribIdx].px=this.bpx; this.pl[dribIdx].py=this.bpy;
                     this.pl[dribIdx].tpx=this.pl[dribIdx].px; this.pl[dribIdx].tpy=this.bpy;
                 }
+                // Snap fmPl attacker to ball start (no lerp lag)
+                const fmSnapIdx=humanAttacking?this._humanAttIdx:this._aiAttIdx;
+                if(fmSnapIdx>=0&&this.fmPl[fmSnapIdx]){
+                    this.fmPl[fmSnapIdx].px=this.bpx; this.fmPl[fmSnapIdx].py=this.bpy;
+                    this.fmPl[fmSnapIdx].tpx=this.bpx; this.fmPl[fmSnapIdx].tpy=this.bpy;
+                }
                 this._shapeAttack(humanAttacking);
             }
 
@@ -788,10 +794,12 @@
                 fm.push({px:.97,py:.50,tpx:.97,tpy:.50,human:false,isGK:true});
                 spread(4,.86,false); spread(4,.69,false); spread(2,.51,false);
                 this.fmPl=fm.map(p=>({px:p.px,py:p.py,tpx:p.tpx,tpy:p.tpy,fpx:p.px,fpy:p.py,human:p.human,isGK:p.isGK||false}));
-                const hIdxs=this.fmPl.map((p,i)=>p.human?i:-1).filter(i=>i>=0);
-                const aIdxs=this.fmPl.map((p,i)=>!p.human?i:-1).filter(i=>i>=0);
+                const hIdxs=this.fmPl.map((p,i)=>p.human&&!p.isGK?i:-1).filter(i=>i>=0);
+                const aIdxs=this.fmPl.map((p,i)=>!p.human&&!p.isGK?i:-1).filter(i=>i>=0);
                 this._humanAttIdx=hIdxs[hIdxs.length-1]??-1;
+                this._humanSupportIdx=hIdxs[hIdxs.length-2]??-1;
                 this._aiAttIdx=aIdxs[aIdxs.length-1]??-1;
+                this._aiSupportIdx=aIdxs[aIdxs.length-2]??-1;
             }
 
             _form(name) {
@@ -834,15 +842,40 @@
                 this.phase=(t*0.003)%(Math.PI*2);
                 const sp=0.07;
                 for(const p of this.pl){p.px+=(p.tpx-p.px)*sp;p.py+=(p.tpy-p.py)*sp;}
-                // Sync fmPl ball carrier with pl dribbler during attacks
-                if(this.dribbleActive && (this._vs==="attack-human"||this._vs==="attack-ai")){
+                // fmPl sync: reset to formation, then apply attack/celebration overrides
+                for(const p of this.fmPl){p.tpx=p.fpx;p.tpy=p.fpy;}
+                if(this._vs==="attack-human"||this._vs==="attack-ai"){
                     const humanAtt=this._vs==="attack-human";
-                    const fi=humanAtt?this._humanAttIdx:this._aiAttIdx;
-                    const carrier=fi>=0?this.fmPl[fi]:null;
-                    const plC=this.pl[this.dribblerIdx];
-                    if(carrier&&plC){carrier.tpx=plC.tpx;carrier.tpy=plC.tpy;}
-                } else if(this._vs==="kickoff"||this._vs==="full-time"){
-                    for(const p of this.fmPl){p.tpx=p.fpx;p.tpy=p.fpy;}
+                    if(this.dribbleActive||this.passActive||this.kickTick>0){
+                        const fi=humanAtt?this._humanAttIdx:this._aiAttIdx;
+                        const carrier=fi>=0?this.fmPl[fi]:null;
+                        const plC=this.pl[this.dribblerIdx];
+                        if(carrier&&plC){carrier.tpx=plC.tpx;carrier.tpy=plC.tpy;}
+                        // Support player follows shooter on pass plays
+                        if(this.passPlanned&&this.shooterIdx!==this.dribblerIdx){
+                            const si=humanAtt?this._humanSupportIdx:this._aiSupportIdx;
+                            const support=si>=0?this.fmPl[si]:null;
+                            const plS=this.pl[this.shooterIdx];
+                            if(support&&plS){support.tpx=plS.tpx;support.tpy=plS.tpy;}
+                        }
+                    }
+                    // Human defenders drop back when AI attacks
+                    if(!humanAtt){
+                        for(const p of this.fmPl){
+                            if(p.human&&!p.isGK&&Math.abs(p.fpx-0.14)<0.01) p.tpx=0.08;
+                        }
+                    }
+                }
+                // Goal celebration: cluster human players near goal
+                if(this.goalTick>0&&this.goalHuman){
+                    let ci=0;
+                    for(const p of this.fmPl){
+                        if(p.human&&!p.isGK){
+                            p.tpx=Math.max(0.01,this.btpx-0.08)+(ci%3-1)*0.025;
+                            p.tpy=0.38+Math.floor(ci/3)*0.12;
+                            ci++;
+                        }
+                    }
                 }
                 for(const p of this.fmPl){p.px+=(p.tpx-p.px)*sp;p.py+=(p.tpy-p.py)*sp;}
                 if(this.dribbleActive) {
@@ -1111,12 +1144,12 @@
             _passLine() {
                 if(!this.passActive || !this.dribbleTarget || !this.passTarget) return;
                 const g=this.g;
-                const a=this._ap(this.dribbleTarget.px,this.dribbleTarget.py);
-                const b=this._ap(this.bpx,this.bpy);
+                const a=this._ps(this.dribbleTarget.px,this.dribbleTarget.py);
+                const b=this._ps(this.bpx,this.bpy);
                 g.save();
                 g.strokeStyle="#f7f15b";
-                g.lineWidth=2.5;
-                g.setLineDash([8,8]);
+                g.lineWidth=1.5;
+                g.setLineDash([5,4]);
                 g.beginPath();
                 g.moveTo(a.x,a.y);
                 g.lineTo(b.x,b.y);
@@ -1210,6 +1243,7 @@
                 this._parc(.25,.5,.09,.15,-Math.PI*.42,Math.PI*.42);
                 this._drawGoal(true); this._drawGoal(false);
                 this._shotArc();
+                this._passLine();
                 const bs=this._ps(this.bpx,this.bpy);
                 this._ball(bs.x,bs.y,6);
                 for(const p of this.fmPl){
