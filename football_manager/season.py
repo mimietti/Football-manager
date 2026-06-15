@@ -298,6 +298,14 @@ class SeasonState:
                 f"Weekly costs — wages £{fin['wages']:,}, "
                 f"rent £{fin['rent']:,}, interest £{fin['interest']:,}."
             )
+            # Forced sale when loan limit is maxed and cash is empty
+            if human.loan >= human.loan_limit:
+                sold = human.force_sell_cheapest()
+                if sold:
+                    human_results[-1].report.append(
+                        f"FORCED SALE: {sold['name']} sold for £{sold['price']:,} "
+                        f"to cover debts. Repay your loan to avoid further sales!"
+                    )
 
         self.last_human_matches = human_results
         self.transfer_window = True    # open window after match
@@ -680,6 +688,7 @@ def create_new_season(
         tactics=Tactics(engine_mode="modern"),
         transfer_market=unsigned_players,
         season_number=1,
+        transfer_window=True,
     )
 
 

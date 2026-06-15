@@ -251,6 +251,33 @@ class Team:
             self.cash = 0
         return {"wages": wages, "rent": rent, "interest": interest, "total": total}
 
+    def force_sell_cheapest(self) -> dict | None:
+        """Sell lowest-skill non-injured player when loan is maxed out."""
+        if len(self.squad) <= LINEUP_SIZE:
+            return None
+        candidates = sorted(
+            [p for p in self.squad if p.injured_weeks == 0],
+            key=lambda p: (p.skill, p.value),
+        )
+        if not candidates:
+            return None
+        player = candidates[0]
+        sell_price = int(((random.random() * 5 + 8) * player.value) / 10)
+        self.cash += sell_price
+        was_in_lineup = player.id in self.lineup_ids
+        self.squad = [p for p in self.squad if p.id != player.id]
+        self.lineup_ids = [pid for pid in self.lineup_ids if pid != player.id]
+        if was_in_lineup:
+            already_in = set(self.lineup_ids)
+            bench = sorted(
+                [p for p in self.squad if p.injured_weeks == 0 and p.id not in already_in],
+                key=lambda p: p.skill + p.energy * 0.1,
+                reverse=True,
+            )
+            if bench:
+                self.lineup_ids.append(bench[0].id)
+        return {"name": player.name, "price": sell_price}
+
     def toggle_lineup(self, player_id: str) -> None:
         if player_id in self.lineup_ids:
             if len(self.lineup_ids) <= 1:

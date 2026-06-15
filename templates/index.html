@@ -186,6 +186,7 @@
 
         function inferPhase(payload) {
             if (payload?.transfer_window && payload?.last_matches?.length) return "report";
+            if (payload?.transfer_window) return "management";
             return "pre";
         }
 
@@ -652,8 +653,7 @@
                 // Snap dribbler player to ball start so they move together
                 const dribIdx=this.dribblerIdx;
                 if(this.pl[dribIdx]){
-                    const fwd=humanAttacking?0.018:-0.018;
-                    this.pl[dribIdx].px=this.bpx-fwd; this.pl[dribIdx].py=this.bpy;
+                    this.pl[dribIdx].px=this.bpx; this.pl[dribIdx].py=this.bpy;
                     this.pl[dribIdx].tpx=this.pl[dribIdx].px; this.pl[dribIdx].tpy=this.bpy;
                 }
                 this._shapeAttack(humanAttacking);
@@ -805,8 +805,9 @@
                     // Phase 1: slow dribble — dribbler player tracks the ball
                     this._moveOffBall();
                     const dribIdx=this.dribblerIdx;
-                    const fwd=this._vs==="attack-ai"?-0.02:0.02;
-                    if(this.pl[dribIdx]){this.pl[dribIdx].tpx=this.bpx-fwd;this.pl[dribIdx].tpy=this.bpy;}
+                    const dribOscil=Math.max(0,Math.sin(this.phase*4))*0.008;
+                    const fwd=this._vs==="attack-ai"?-dribOscil:dribOscil;
+                    if(this.pl[dribIdx]){this.pl[dribIdx].tpx=this.bpx-fwd;this.pl[dribIdx].tpy=this.bpy;this.pl[dribIdx].px=this.bpx-fwd;this.pl[dribIdx].py=this.bpy;}
                     const dx=this.dribbleTarget.px-this.bpx, dy=this.dribbleTarget.py-this.bpy;
                     const dist=Math.sqrt(dx*dx+dy*dy);
                     if(dist<=this.dribbleStep) {
@@ -841,8 +842,9 @@
                 } else if(this.kickTick>0) {
                     this._moveOffBall();
                     const dribIdx=this.shooterIdx;
-                    const fwd=this._vs==="attack-ai"?-0.02:0.02;
-                    if(this.pl[dribIdx]){this.pl[dribIdx].tpx=this.bpx-fwd;this.pl[dribIdx].tpy=this.bpy;}
+                    const dribOscil=Math.max(0,Math.sin(this.phase*4))*0.008;
+                    const fwd=this._vs==="attack-ai"?-dribOscil:dribOscil;
+                    if(this.pl[dribIdx]){this.pl[dribIdx].tpx=this.bpx-fwd;this.pl[dribIdx].tpy=this.bpy;this.pl[dribIdx].px=this.bpx-fwd;this.pl[dribIdx].py=this.bpy;}
                     this.kickTick--;
                     if(this.kickTick===0) this._launchShot();
                 } else if(this.shotActive) {
@@ -1325,7 +1327,7 @@
             document.getElementById("endSeason").style.display =
                 state.season_over ? "inline-flex" : "none";
             document.getElementById("editSquad").style.display =
-                (!state.season_over && state.transfer_window) ? "inline-flex" : "none";
+                (!state.season_over && (state.transfer_window || !(state.last_matches || []).length)) ? "inline-flex" : "none";
 
             // League table
             document.getElementById("tableDiv").textContent = state.division;
@@ -1551,7 +1553,7 @@
                     if (player.id === pendingLineupIn.id) { statusLabel = "Selected"; statusClass = "status-swap"; statusContent = esc(statusLabel); }
                     else if (player.active) { statusLabel = "Swap"; statusClass = "status-swap"; statusContent = esc(statusLabel); }
                 } else if (squadAction === "sell") {
-                    statusLabel = state?.transfer_sold_this_window ? "Sold" : "Sell";
+                    statusLabel = "Sell";
                     statusClass = player.injured || state?.transfer_sold_this_window ? "status-disabled" : "status-action";
                     statusContent = esc(statusLabel);
                 } else if (!player.injured) {
@@ -1796,6 +1798,9 @@
                 }
                 if (squadAction === "sell") {
                     if (player.injured || state?.transfer_sold_this_window) return;
+                    const lo = fmt(Math.floor(player.value * 0.8));
+                    const hi = fmt(Math.floor(player.value * 1.3));
+                    if (!confirm(`Sell ${player.name}?\nExpected offer: ${lo} – ${hi}`)) return;
                     emitGame("sell_player", { team: playerSelect.dataset.team, player_id: player.id });
                     return;
                 }
@@ -1866,6 +1871,7 @@
             clearPlayWait();
             pendingLineupIn = null;
             transferMessage = "";
+            if (payload.transfer_sold_this_window && squadAction === "sell") squadAction = "lineup";
             state = payload;
             if (wasWaiting && payload.last_matches?.length > 0) {
                 animating = true;
