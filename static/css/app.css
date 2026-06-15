@@ -88,8 +88,8 @@ body {
 .hero {
     position: relative;
     overflow: hidden;
-    min-height: 150px;
-    padding: 14px 18px;
+    min-height: 64px;
+    padding: 8px 18px;
     border: 1px solid var(--line);
     border-radius: 8px;
     background: linear-gradient(180deg, #16462e, #102719);
@@ -105,25 +105,25 @@ body {
 .pitch::before {
     content: "";
     position: absolute;
-    top: 38px;
-    bottom: 38px;
+    top: 8px;
+    bottom: 8px;
     left: 18px;
-    width: 80px;
-    border: 3px solid rgba(255,255,255,0.40);
+    width: 56px;
+    border: 2px solid rgba(255,255,255,0.40);
 }
 .hero-content {
     position: relative;
-    min-height: 120px;
+    min-height: 48px;
     display: grid;
     grid-template-columns: minmax(0, 1fr) auto;
     gap: 18px;
-    align-items: end;
+    align-items: center;
 }
 h1 {
     margin: 0;
     color: #fff7bf;
-    font-size: clamp(34px, 4.2vw, 58px);
-    line-height: 0.96;
+    font-size: clamp(22px, 2.6vw, 36px);
+    line-height: 1.1;
 }
 h2 {
     margin: 0 0 8px;
@@ -228,6 +228,11 @@ button:disabled {
 }
 .panel-title-row h2 {
     margin: 0;
+}
+.title-left {
+    display: flex;
+    gap: 8px;
+    align-items: center;
 }
 .title-actions {
     display: flex;
@@ -588,7 +593,7 @@ select {
 }
 .squad-table-head {
     display: grid;
-    grid-template-columns: minmax(116px, 1fr) 86px 64px 92px 74px;
+    grid-template-columns: minmax(90px, 170px) 86px 64px 92px 74px;
     gap: 6px;
     align-items: center;
     padding: 2px 6px;
@@ -613,7 +618,7 @@ select {
 }
 .player-row {
     display: grid;
-    grid-template-columns: minmax(116px, 1fr) 86px 64px 92px 74px;
+    grid-template-columns: minmax(90px, 170px) 86px 64px 92px 74px;
     gap: 6px;
     align-items: center;
     padding: 3px 6px;
@@ -677,6 +682,18 @@ button.player-row:hover {
     color: var(--muted);
     font-size: 14px;
 }
+.player-row .player-name-cell {
+    display: flex;
+    flex-direction: column;
+    gap: 1px;
+}
+.morale-hint {
+    font-size: 11px;
+    color: var(--muted);
+    font-style: normal;
+}
+.morale-up { color: var(--green); }
+.morale-dn { color: var(--red); }
 .skill-profile {
     font-size: 11px;
     letter-spacing: 0;
@@ -684,6 +701,15 @@ button.player-row:hover {
 .player-disabled {
     opacity: 0.45;
     cursor: not-allowed;
+}
+button.transfer-row {
+    width: fit-content;
+    grid-template-columns: auto 86px auto auto auto;
+    background: rgba(214,199,93,0.11);
+    border-color: rgba(214,199,93,0.40);
+}
+button.transfer-row:hover {
+    background: rgba(214,199,93,0.20);
 }
 .energy-value {
     display: inline;
@@ -819,6 +845,7 @@ tr.player {
     line-height: 1.5;
 }
 .muted { color: var(--muted); }
+#credit { margin: 2px 0 0; font-size: 11px; }
 .small { font-size: 12px; }
 .pos-d { color: #6ec6ff; }
 .pos-m { color: #d6c75d; }

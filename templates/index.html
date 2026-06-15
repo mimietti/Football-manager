@@ -112,12 +112,12 @@
                     <div id="transferMarket" class="player-list"></div>
                 </div>
                 <div class="panel-title-row">
-                    <h2>Squad — <span id="squadTeamName"></span></h2>
-                    <div class="title-actions">
-                        <span id="lineupBadge" class="lineup-badge"></span>
+                    <div class="title-left">
+                        <h2>Squad — <span id="squadTeamName"></span></h2>
                         <button id="renameTeamButton" class="title-action" type="button">Rename Club</button>
                         <button id="renamePlayerButton" class="title-action" type="button">Rename Player</button>
                     </div>
+                    <span id="lineupBadge" class="lineup-badge"></span>
                 </div>
                 <div id="renamePlayerPicker" class="rename-picker" style="display:none">
                     <select id="renamePlayerSelect"></select>
@@ -629,6 +629,9 @@
                 const f=arr[Math.floor(Math.random()*arr.length)];
                 f.h.forEach((p,i)=>{if(this.pl[i]){this.pl[i].tpx=p.px;this.pl[i].tpy=p.py;}});
                 f.a.forEach((p,i)=>{if(this.pl[2+i]){this.pl[2+i].tpx=p.px;this.pl[2+i].tpy=p.py;}});
+                // Goalkeeper (pl[5]): defending team's color; reset to black for non-attack views
+                if(name==="attack-ai")    this.pl[5].human=true;
+                else                      this.pl[5].human=false;
                 this.btpx=f.b.px; this.btpy=f.b.py;
             }
 
@@ -1160,7 +1163,7 @@
                             <h3>${label}</h3>
                             <div class="squad-table-head">
                                 <span>Name</span>
-                                <span>D/M/A</span>
+                                <span>Skills</span>
                                 <span>Energy</span>
                                 <span>Value</span>
                                 <span>Status</span>
@@ -1286,6 +1289,14 @@
             return `${player.skill}`;
         }
 
+        function moraleHtml(player) {
+            const m = player.morale ?? 0;
+            const d = player.morale_delta ?? 0;
+            const dStr = d > 0 ? `+${d}` : d < 0 ? `${d}` : null;
+            const dc = d > 0 ? "morale-up" : d < 0 ? "morale-dn" : "";
+            return `<span class="morale-val">M·${m}</span>${dStr ? ` <span class="${dc}">${dStr}</span>` : ""}`;
+        }
+
         function playerRow(player, teamName, owned) {
             const inj = player.injured ? ` <em class="inj">INJ</em>` : "";
             const pc = posClass(player.position);
@@ -1310,7 +1321,10 @@
                 <button type="button"
                     class="player-row player-select ${player.active ? "active-player" : ""} ${player.injured ? "injured-player" : ""}"
                     data-player-select="${esc(player.id)}" data-team="${esc(teamName)}">
-                    <strong class="${pc}">${esc(player.name)}${inj}</strong>
+                    <span class="player-name-cell">
+                        <strong class="${pc}">${esc(player.name)}${inj}</strong>
+                        <small class="morale-hint">${moraleHtml(player)}</small>
+                    </span>
                     <span class="skill-profile">${skills}</span>
                     <span>${energyHtml}</span>
                     <span>${fmt(player.value)}</span>
@@ -1319,9 +1333,12 @@
             }
             const buyDisabled = state?.transfer_bought_this_window ? "disabled" : "";
             return `
-            <button type="button" class="player-row${buyDisabled ? " player-disabled" : ""}"
+            <button type="button" class="player-row transfer-row${buyDisabled ? " player-disabled" : ""}"
                 data-buy="${esc(player.id)}" data-team="${esc(teamName)}" ${buyDisabled}>
-                <strong class="${pc}">${esc(player.name)}</strong>
+                <span class="player-name-cell">
+                    <strong class="${pc}">${esc(player.name)}</strong>
+                    <small class="morale-hint">${moraleHtml(player)}</small>
+                </span>
                 <span class="skill-profile">${skills}</span>
                 <span>${energyHtml}</span>
                 <span>${fmt(player.value)}</span>

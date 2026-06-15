@@ -85,12 +85,15 @@ class Player:
     skill_d: int = 0
     skill_m: int = 0
     skill_a: int = 0
+    morale_delta: int = 0
 
     def __setstate__(self, state: dict) -> None:
         self.__dict__.update(state)
         if 'skill_d' not in self.__dict__:
             sd, sm, sa = _position_skills(self.position, self.skill)
             self.skill_d, self.skill_m, self.skill_a = sd, sm, sa
+        if 'morale_delta' not in self.__dict__:
+            self.morale_delta = 0
 
     def to_dict(self, active: bool = False) -> dict:
         data = asdict(self)
@@ -295,11 +298,11 @@ class Team:
                 player.injured_weeks -= 1
                 player.energy = min(20, player.energy + 10)
             else:
-                # BASIC line 6030: picked=+10 energy, available=-1 energy (approximate bench rest)
+                # Active players tire (-1/round); bench players recover quickly (+10/round)
                 if player.id in active_ids:
                     player.energy = max(1, player.energy - 1)
                 else:
-                    player.energy = min(20, player.energy + 1)
+                    player.energy = min(20, player.energy + 10)
                 # Low energy increases injury risk; fresh players are less fragile.
                 if player.energy >= 15:
                     injury_roll = 36
@@ -335,7 +338,9 @@ class Team:
         self.retro_morale = max(1, min(20, self.retro_morale))
         # Sync all active players' morale to team morale
         for player in self.active_players:
+            old = player.morale
             player.morale = self.retro_morale
+            player.morale_delta = player.morale - old
 
     def apply_modern_match_events(self, events: list) -> None:
         """
@@ -374,7 +379,9 @@ class Team:
 
         # Apply and clamp
         for player in self.squad:
+            old = player.morale
             player.morale = max(1, min(20, player.morale + deltas.get(player.id, 0)))
+            player.morale_delta = player.morale - old
 
         # Sync team morale = rounded average of active players' morale
         if self.active_players:
