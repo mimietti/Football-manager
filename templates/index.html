@@ -582,20 +582,8 @@
                 C.br = {x:C.bl.x+C.tr.x-C.tl.x, y:C.bl.y+C.tr.y-C.tl.y};
             }
 
-            // Apply zoom transform: pan/zoom to focus on attacking goal
-            _setView(g) {
-                const W=this.W, H=this.H, vs=this._vs||"kickoff";
-                if(vs!=="attack-human"&&vs!=="attack-ai") return;
-                const {tl,tr,bl} = this.C;
-                const pitchW = tr.x - tl.x;   // screen width of pitch
-                const pitchH = bl.y - tl.y;   // screen height of pitch
-                const vw = pitchW * 0.34;      // tight view of the penalty area
-                const scale = W / vw;
-                const vx0 = vs==="attack-human" ? tl.x + pitchW*0.63 : tl.x - pitchW*0.18;
-                const viewH = H / scale;
-                const vy0 = tl.y + (pitchH - viewH) * 0.5;
-                g.setTransform(scale, 0, 0, scale, -vx0*scale, -vy0*scale);
-            }
+            // Zoom disabled — full pitch always shown
+            _setView(g) { }
 
             // Pitch coord (0..1) to screen coord
             _ps(px, py) {
