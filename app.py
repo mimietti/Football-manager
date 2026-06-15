@@ -135,8 +135,19 @@ def _uid() -> int | None:
 # ── HTTP routes ───────────────────────────────────────────────────────────────
 
 @app.get("/")
-@login_required
 def index():
+    if not current_user.is_authenticated:
+        # Auto-create or restore an anonymous guest session — no registration needed
+        import secrets as _secrets
+        guest_uid = session.get("guest_uid")
+        user = User.query.get(guest_uid) if guest_uid else None
+        if not user:
+            user = User(username=f"guest_{_secrets.token_hex(6)}")
+            user.set_password(_secrets.token_hex(16))
+            db.session.add(user)
+            db.session.commit()
+            session["guest_uid"] = user.id
+        login_user(user, remember=True)
     return render_template("index.html", username=current_user.username)
 
 
