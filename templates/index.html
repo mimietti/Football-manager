@@ -554,6 +554,8 @@
                 this.setState(this._attackVs);
                 this.goalTick=0; this.goalDelayTick=0; this.bannTick=0;
                 this.shotActive=false; this._pending=null;
+                this.shotStart=null; this.shotTraceTick=0;
+                this.keeperSave=null; this.keeperTick=0;
                 this.dribbleActive=true;
                 this.dribbleTarget=this._shotOrigin(humanAttacking);
                 // Ball enters from the correct screen edge
