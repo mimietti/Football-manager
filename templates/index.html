@@ -504,6 +504,7 @@
                 this.goalDelayTick=0;
                 this.keeperSave=null; this.keeperTick=0;
                 this.dribbleActive=false; this.dribbleTarget=null; this.dribbleStep=0.0009;
+                this.kickTick=0; this.kickDuration=18;
                 this._pendingBtpx=0; this._pendingBtpy=0;
                 this._pendingResult=null; this._pendingKeeper=null; this._attackVs="attack-human";
                 this._raf=null; this._loop=this._loop.bind(this);
@@ -555,6 +556,7 @@
                 this.goalDelayTick=0;
                 this.keeperSave=null; this.keeperTick=0;
                 this.dribbleActive=false; this.dribbleTarget=null;
+                this.kickTick=0;
                 this._pendingResult=null; this._pendingKeeper=null;
                 this._form("kickoff");
                 this._hideOverlay();
@@ -575,6 +577,7 @@
                 this.shotActive=false; this._pending=null;
                 this.shotStart=null; this.shotTraceTick=0;
                 this.keeperSave=null; this.keeperTick=0;
+                this.kickTick=0;
                 this.dribbleActive=true;
                 this.dribbleTarget=this._shotOrigin(humanAttacking);
                 // Ball enters from the correct screen edge
@@ -625,6 +628,7 @@
                 this.goalDelayTick=0;
                 this.keeperSave=null; this.keeperTick=0;
                 this.dribbleActive=false; this.dribbleTarget=null;
+                this.kickTick=0;
                 this._pendingResult=null; this._pendingKeeper=null;
                 this._hideOverlay();
             }
@@ -670,20 +674,17 @@
                     if(dist<=this.dribbleStep) {
                         this.bpx=this.dribbleTarget.px; this.bpy=this.dribbleTarget.py;
                         this.dribbleActive=false;
-                        // Launch shot
-                        this.btpx=this._pendingBtpx; this.btpy=this._pendingBtpy;
-                        this.shotStart={px:this.bpx, py:this.bpy};
-                        this.shotTraceTick=180;
-                        if(this._pendingResult==="saved") {
-                            this.keeperSave=this._pendingKeeper; this.keeperTick=0;
-                        }
-                        this._pending=this._pendingResult;
-                        this._pendingResult=null;
-                        this.shotActive=true;
+                        this.kickTick=this.kickDuration;
                     } else {
                         this.bpx+=(dx/dist)*this.dribbleStep;
                         this.bpy+=(dy/dist)*this.dribbleStep;
                     }
+                } else if(this.kickTick>0) {
+                    const dribIdx=this._vs==="attack-ai"?2:0;
+                    const fwd=this._vs==="attack-ai"?-0.02:0.02;
+                    if(this.pl[dribIdx]){this.pl[dribIdx].tpx=this.bpx+fwd;this.pl[dribIdx].tpy=this.bpy;}
+                    this.kickTick--;
+                    if(this.kickTick===0) this._launchShot();
                 } else if(this.shotActive) {
                     // Phase 2: fast shot toward target
                     const dx=this.btpx-this.bpx, dy=this.btpy-this.bpy;
@@ -716,6 +717,18 @@
                 if(this.keeperTick>0)this.keeperTick--;
                 else if(!this.shotActive && this._pending!=="saved") this.keeperSave=null;
                 this._draw();
+            }
+
+            _launchShot() {
+                this.btpx=this._pendingBtpx; this.btpy=this._pendingBtpy;
+                this.shotStart={px:this.bpx, py:this.bpy};
+                this.shotTraceTick=180;
+                if(this._pendingResult==="saved") {
+                    this.keeperSave=this._pendingKeeper; this.keeperTick=0;
+                }
+                this._pending=this._pendingResult;
+                this._pendingResult=null;
+                this.shotActive=true;
             }
 
             _lp(pts) {
@@ -929,9 +942,20 @@
                     const bs=AP(this.bpx,this.bpy);
                     this._ball(bs.x,bs.y,6);
                 }
+                const kickIdx=this.kickTick>0 ? (this._vs==="attack-ai"?2:0) : -1;
+                const kickDir=this._vs==="attack-ai"?-1:1;
+                const kickPower=this.kickTick>0 ? 1-(this.kickTick/this.kickDuration) : 0;
                 for(const p of this.pl){
                     const s=AP(p.px,p.py);
-                    this._fig(s.x,s.y,p.human,(Math.abs(p.px-p.tpx)+Math.abs(p.py-p.tpy))>0.015);
+                    const i=this.pl.indexOf(p);
+                    this._fig(
+                        s.x,
+                        s.y,
+                        p.human,
+                        (Math.abs(p.px-p.tpx)+Math.abs(p.py-p.tpy))>0.015,
+                        i===kickIdx ? kickDir : 0,
+                        i===kickIdx ? kickPower : 0
+                    );
                 }
                 if(this.keeperSave && (this.shotActive || this.keeperTick>0)) {
                     const kp=this._keeperSavePoint();
@@ -995,7 +1019,7 @@
                 }
             }
 
-            _fig(x, y, isHome, run) {
+            _fig(x, y, isHome, run, kickDir=0, kickPower=0) {
                 const g=this.g,c=isHome?"#ffffff":this.aiColor,s=14,ph=this.phase;
                 g.strokeStyle=c; g.fillStyle=c; g.lineWidth=1.5;
                 g.beginPath(); g.arc(x,y-s*.65,s*.18,0,Math.PI*2); g.fill();
@@ -1003,6 +1027,16 @@
                 const sw=run?Math.sin(ph*3)*.25:0;
                 g.beginPath(); g.moveTo(x-s*(.32+sw),y-s*.25); g.lineTo(x+s*(.32-sw),y-s*.25); g.stroke();
                 const lw=run?Math.sin(ph*3)*.38:0;
+                if(kickDir) {
+                    const wind=Math.sin(kickPower*Math.PI);
+                    const plantX=x-kickDir*s*.22;
+                    const plantY=y+s*.44;
+                    const bootX=x+kickDir*s*(.20+wind*.82);
+                    const bootY=y+s*(.44-wind*.22);
+                    g.beginPath(); g.moveTo(x,y); g.lineTo(plantX,plantY); g.stroke();
+                    g.beginPath(); g.moveTo(x,y); g.lineTo(bootX,bootY); g.stroke();
+                    return;
+                }
                 g.beginPath(); g.moveTo(x,y); g.lineTo(x-s*(.26+lw),y+s*.44); g.stroke();
                 g.beginPath(); g.moveTo(x,y); g.lineTo(x+s*(.26-lw),y+s*.44); g.stroke();
             }
