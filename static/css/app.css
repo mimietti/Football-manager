@@ -1020,13 +1020,13 @@ em.inj {
 .prematch-table th.pm-human { color: var(--green); }
 .prematch-table th.pm-ai { color: var(--red); }
 .pm-rename-btn {
-    margin-left: 8px;
-    padding: 1px 7px;
-    font-size: 10px;
+    margin-left: 10px;
+    padding: 4px 10px;
+    font-size: 12px;
     font-family: inherit;
     background: rgba(214,199,93,0.12);
     border: 1px solid rgba(214,199,93,0.40);
-    border-radius: 3px;
+    border-radius: 5px;
     color: var(--accent);
     cursor: pointer;
     vertical-align: middle;

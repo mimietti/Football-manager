@@ -271,6 +271,10 @@
             }
             if (!pm) { panel.style.display = "none"; return; }
             const humanName = state.human_teams?.[0]?.name ?? "";
+            const showPreMatchRename = (state?.league_match ?? 0) === 0;
+            const renameButton = showPreMatchRename
+                ? '<button class="pm-rename-btn" type="button" data-pm-rename="1">Rename</button>'
+                : "";
             const rows = [
                 ["Energy",   pm.human.energy,   pm.ai.energy],
                 ["Morale",   pm.human.morale,   pm.ai.morale],
@@ -282,7 +286,7 @@
                 <table class="prematch-table">
                     <thead><tr>
                         <th></th>
-                        <th class="pm-human"><span>${esc(humanName)}</span><button class="pm-rename-btn" type="button" data-pm-rename="1">Rename</button></th>
+                        <th class="pm-human"><span>${esc(humanName)}</span>${renameButton}</th>
                         <th class="pm-ai">${esc(pm.opponent)}</th>
                     </tr></thead>
                     <tbody>${rows.map(([label, h, a]) => `
