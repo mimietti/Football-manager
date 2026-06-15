@@ -561,6 +561,13 @@
                 // Ball enters from the correct screen edge
                 this.bpx=humanAttacking ? 0.630 : 0.370;
                 this.bpy=0.41+Math.random()*0.18;
+                // Snap dribbler player to ball start so they move together
+                const dribIdx=humanAttacking?0:2;
+                if(this.pl[dribIdx]){
+                    const fwd=humanAttacking?0.018:-0.018;
+                    this.pl[dribIdx].px=this.bpx+fwd; this.pl[dribIdx].py=this.bpy;
+                    this.pl[dribIdx].tpx=this.pl[dribIdx].px; this.pl[dribIdx].tpy=this.bpy;
+                }
             }
 
             goal(humanScored) {
@@ -632,7 +639,10 @@
                 const sp=0.07;
                 for(const p of this.pl){p.px+=(p.tpx-p.px)*sp;p.py+=(p.tpy-p.py)*sp;}
                 if(this.dribbleActive) {
-                    // Phase 1: slow dribble approach from screen edge to shot origin
+                    // Phase 1: slow dribble — dribbler player tracks the ball
+                    const dribIdx=this._vs==="attack-ai"?2:0;
+                    const fwd=this._vs==="attack-ai"?-0.02:0.02;
+                    if(this.pl[dribIdx]){this.pl[dribIdx].tpx=this.bpx+fwd;this.pl[dribIdx].tpy=this.bpy;}
                     const dx=this.dribbleTarget.px-this.bpx, dy=this.dribbleTarget.py-this.bpy;
                     const dist=Math.sqrt(dx*dx+dy*dy);
                     if(dist<=this.dribbleStep) {
