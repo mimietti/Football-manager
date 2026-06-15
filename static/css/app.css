@@ -198,6 +198,29 @@ button:disabled {
 .layout {
     grid-template-columns: 1.15fr 0.85fr;
 }
+#reportLayout {
+    grid-template-columns: minmax(0, 1.35fr) minmax(360px, 0.65fr);
+}
+#reportLayout .panel {
+    padding: 10px 14px;
+}
+#tablePanel h2 {
+    margin-bottom: 6px;
+}
+#leagueTable {
+    font-size: 13px;
+}
+#leagueTable th,
+#leagueTable td {
+    padding: 5px 5px;
+}
+#leagueTable th:nth-child(3),
+#leagueTable th:nth-child(4),
+#leagueTable td:nth-child(3),
+#leagueTable td:nth-child(4) {
+    color: var(--muted);
+    font-size: 12px;
+}
 .management-layout {
     grid-template-columns: 1fr;
 }
@@ -774,17 +797,17 @@ tr.player {
 .score-result { font-size: 1.1em; letter-spacing: 0.04em; }
 .shirt-icon { flex-shrink: 0; }
 .latest-match ul {
-    margin: 8px 0 0;
+    margin: 6px 0 0;
     padding-left: 0;
     list-style: none;
     color: var(--muted);
-    font-size: 14px;
-    line-height: 1.45;
+    font-size: 13px;
+    line-height: 1.35;
 }
 .latest-match li {
     display: grid;
-    grid-template-columns: 46px minmax(0, 1fr);
-    gap: 8px;
+    grid-template-columns: 44px minmax(0, 1fr);
+    gap: 6px;
     align-items: baseline;
 }
 .match-minute {
@@ -800,31 +823,43 @@ tr.player {
     text-align: right;
 }
 .match-finance {
-    margin-top: 10px;
-    padding: 10px 14px;
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    flex-wrap: wrap;
+    margin-top: 8px;
+    padding: 8px 10px;
     border-radius: 4px;
     background: rgba(0,0,0,0.28);
     border: 1px solid var(--line);
     color: var(--muted);
     font-family: "Courier New", monospace;
-    font-size: 16px;
+    font-size: 14px;
     font-weight: 600;
-    line-height: 1.45;
+    line-height: 1.25;
 }
-.match-finance h4 {
-    display: inline-block;
-    margin: 0 0 8px;
-    padding: 2px 8px;
+.match-finance p {
+    margin: 0;
+}
+.weekly-bills {
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    min-width: 0;
+}
+.weekly-bills span {
+    padding: 2px 7px;
     background: var(--red);
     color: var(--accent);
-    font-size: 14px;
+    font-size: 12px;
     font-weight: 900;
     text-transform: uppercase;
     letter-spacing: 0.06em;
     border-radius: 2px;
 }
-.match-finance p {
-    margin: 3px 0;
+.weekly-bills strong {
+    color: var(--text);
+    font-weight: 800;
 }
 .latest-match li.event-goal {
     color: var(--green);
@@ -1004,33 +1039,45 @@ em.inj {
     border-color: #d2ca20;
 }
 .other-matches-title {
-    margin: 10px 0 4px;
+    margin: 8px 0 4px;
     color: var(--accent);
     font-size: 12px;
     letter-spacing: 0.08em;
     text-transform: uppercase;
     border-top: 1px solid var(--line);
-    padding-top: 14px;
+    padding-top: 10px;
 }
-.other-matches-table {
-    width: 100%;
+.other-matches-grid {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 2px 18px;
     font-size: 13px;
     font-family: "Courier New", monospace;
 }
-.other-matches-table td {
-    padding: 2px 4px;
-    border: none;
+.other-match-item {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) 42px minmax(0, 1fr);
+    align-items: baseline;
+    gap: 6px;
+    min-width: 0;
     white-space: nowrap;
 }
-.other-matches-table td.om-score {
+.other-match-item span {
+    min-width: 0;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+.other-match-item span:last-child {
+    text-align: right;
+}
+.other-match-item .om-score {
     text-align: center;
     color: var(--text);
     font-weight: 700;
-    width: 68px;
 }
-.other-matches-table td.om-win { color: var(--green); }
-.other-matches-table td.om-draw { color: var(--accent); }
-.other-matches-table td.om-lose { color: var(--muted); }
+.other-match-item .om-win { color: var(--green); }
+.other-match-item .om-draw { color: var(--accent); }
+.other-match-item .om-lose { color: var(--muted); }
 .close-report {
     margin-top: 14px;
     border-radius: 8px;
@@ -1103,6 +1150,10 @@ em.inj {
     }
     .match-panel {
         display: grid;
+    }
+    #reportLayout,
+    .other-matches-grid {
+        grid-template-columns: 1fr;
     }
     .new-season {
         justify-content: flex-start;

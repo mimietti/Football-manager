@@ -300,15 +300,15 @@
                 const draw = m.home_goals === m.away_goals;
                 const hc = homeWin ? "om-win" : draw ? "om-draw" : "om-lose";
                 const ac = awayWin ? "om-win" : draw ? "om-draw" : "om-lose";
-                return `<tr>
-                    <td class="${hc}">${esc(m.home)}</td>
-                    <td class="om-score">${m.home_goals} – ${m.away_goals}</td>
-                    <td class="${ac}">${esc(m.away)}</td>
-                </tr>`;
+                return `<div class="other-match-item">
+                    <span class="${hc}">${esc(m.home)}</span>
+                    <span class="om-score">${m.home_goals}-${m.away_goals}</span>
+                    <span class="${ac}">${esc(m.away)}</span>
+                </div>`;
             }).join("");
             el.innerHTML = `
                 <h3 class="other-matches-title">Other Matches — Division ${division}</h3>
-                <table class="other-matches-table"><tbody>${rows}</tbody></table>`;
+                <div class="other-matches-grid">${rows}</div>`;
         }
 
         function isFinanceLine(l) {
@@ -320,12 +320,11 @@
             let html = '<div class="match-finance">';
             lines.forEach(f => {
                 if (f.startsWith("Weekly costs")) {
-                    html += `<h4>Weekly costs</h4><p>${esc(f.replace(/^Weekly costs\s*[—\-]+\s*/, ""))}</p>`;
+                    html += `<div class="weekly-bills"><span>Weekly bills</span><strong>${esc(f.replace(/^Weekly costs\s*[—\-]+\s*/, ""))}</strong></div>`;
                 } else {
                     html += `<p>${esc(f)}</p>`;
                 }
             });
-            html = html.replace("<h4>Weekly costs</h4>", "<h4>****Weekly Bills****</h4>");
             return html + "</div>";
         }
 
