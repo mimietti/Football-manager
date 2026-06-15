@@ -777,18 +777,17 @@
                         n===5?[.18,.32,.50,.68,.82]:Array.from({length:n},(_,i)=>0.15+(0.70/Math.max(1,n-1))*i);
                     ys.forEach(py=>fm.push({px:x,py,tpx:x,tpy:py,human}));
                 };
-                // Normalize human to exactly 11: pad/trim midfielders
+                // Show actual active players — no padding to 11
                 let d=hD|0, m=hM|0, a=hA|0;
-                while(d+m+a<11) m++;
-                while(d+m+a>11){ if(m>0)m--; else if(d>0)d--; else a--; }
-                // First D (or M if no D) becomes GK at far post
+                // First available player becomes GK
                 if(d>0){fm.push({px:.03,py:.50,tpx:.03,tpy:.50,human:true,isGK:true});d--;}
                 else if(m>0){fm.push({px:.03,py:.50,tpx:.03,tpy:.50,human:true,isGK:true});m--;}
+                else if(a>0){fm.push({px:.03,py:.50,tpx:.03,tpy:.50,human:true,isGK:true});a--;}
                 spread(d,.14,true); spread(m,.31,true); spread(a,.49,true);
                 // AI: 1 GK + 4D + 4M + 2A = 11
                 fm.push({px:.97,py:.50,tpx:.97,tpy:.50,human:false,isGK:true});
                 spread(4,.86,false); spread(4,.69,false); spread(2,.51,false);
-                this.fmPl=fm.map(p=>({px:p.px,py:p.py,tpx:p.tpx,tpy:p.tpy,human:p.human}));
+                this.fmPl=fm.map(p=>({px:p.px,py:p.py,tpx:p.tpx,tpy:p.tpy,human:p.human,isGK:p.isGK||false}));
             }
 
             _form(name) {
@@ -1211,16 +1210,6 @@
                         g.fillText("G",s.x,s.y-14);
                         g.restore();
                     }
-                }
-                const kickIdx=this.kickTick>0 ? this.shooterIdx : -1;
-                const kickDir=this._vs==="attack-ai"?-1:1;
-                const kickPower=this.kickTick>0 ? 1-(this.kickTick/this.kickDuration) : 0;
-                for(const p of this.pl){
-                    const s=this._ps(p.px,p.py);
-                    const i=this.pl.indexOf(p);
-                    const kicking=i===kickIdx;
-                    this._fig(s.x,s.y,p.human,(Math.abs(p.px-p.tpx)+Math.abs(p.py-p.tpy))>0.015,
-                              kicking?kickDir:0, kicking?kickPower:0);
                 }
                 if(this.keeperSave && (this.shotActive || this.keeperTick>0)) {
                     const ks=this._ps(this.keeperSave.px,this.keeperSave.py);
