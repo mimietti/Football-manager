@@ -653,9 +653,17 @@
                         py:Math.max(0.32, Math.min(0.68, this.passTarget.py + (Math.random()-.5)*0.16))
                     }
                     : this.passTarget;
-                // Ball enters from the correct screen edge
-                this.bpx=humanAttacking ? 0.630 : 0.370;
-                this.bpy=0.41+Math.random()*0.18;
+                // Ball start: variety of positions (center, attack third, wide flank)
+                const ar=Math.random();
+                if(humanAttacking){
+                    if(ar<0.45){this.bpx=0.60+Math.random()*0.06;this.bpy=0.38+Math.random()*0.24;}
+                    else if(ar<0.75){this.bpx=0.74+Math.random()*0.07;this.bpy=0.32+Math.random()*0.36;}
+                    else{this.bpx=0.70+Math.random()*0.08;this.bpy=Math.random()<0.5?0.04+Math.random()*0.10:0.86+Math.random()*0.10;}
+                } else {
+                    if(ar<0.45){this.bpx=0.40-Math.random()*0.06;this.bpy=0.38+Math.random()*0.24;}
+                    else if(ar<0.75){this.bpx=0.26-Math.random()*0.07;this.bpy=0.32+Math.random()*0.36;}
+                    else{this.bpx=0.30-Math.random()*0.08;this.bpy=Math.random()<0.5?0.04+Math.random()*0.10:0.86+Math.random()*0.10;}
+                }
                 // Snap dribbler player to ball start so they move together
                 const dribIdx=this.dribblerIdx;
                 if(this.pl[dribIdx]){
@@ -1107,8 +1115,8 @@
 
             _goalBallInNet() {
                 if(this.goalTick<=0 && this.goalDelayTick<=0) return;
-                const p=this._ap(this.btpx, this.btpy);
-                this._ball(p.x,p.y,7);
+                const p=this._ps(this.btpx, this.btpy);
+                this._ball(p.x,p.y,9);
             }
 
             _keeperSavePoint() {
@@ -1255,6 +1263,7 @@
                 this._passLine();
                 const bs=this._ps(this.bpx,this.bpy);
                 this._ball(bs.x,bs.y,6);
+                this._goalBallInNet();
                 for(const p of this.fmPl){
                     const s=this._ps(p.px,p.py);
                     const moving=(Math.abs(p.px-p.tpx)+Math.abs(p.py-p.tpy))>0.015;
