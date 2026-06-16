@@ -385,6 +385,7 @@
 
             for (const m of matches) {
                 let curHome = 0, curAway = 0;
+                let lastHumanAttacking = true;
                 const humanName = (state.human_teams || [])[0]?.name ?? "";
                 const humanIsHome = m.home === humanName;
                 const viz = ensureViz();
@@ -448,6 +449,8 @@
                     const isIntercept = l.includes(" intercepts");
                     const prevHome = curHome, prevAway = curAway;
 
+                    let needsLongDelay = false;
+
                     if (isGoal) {
                         const sg = l.match(/\((\d+)[–\-](\d+)\)/);
                         if (sg) {
@@ -457,11 +460,12 @@
                             updateVsEl(curHome, curAway);
                         }
                         const humanScored = humanIsHome ? curHome > prevHome : curAway > prevAway;
+                        lastHumanAttacking = humanScored;
                         viz.setScore(curHome, curAway);
                         viz.goal(humanScored);
                     } else if (isMiss) {
-                        // Attacker name precedes "shoots wide"
                         const humanMissed = humanName && l.startsWith(humanName);
+                        lastHumanAttacking = humanMissed;
                         viz.setState(humanMissed ? "attack-human" : "attack-ai");
                         viz.noGoal(humanMissed);
                     } else if (isSaved) {
@@ -469,11 +473,12 @@
                         const humanAttacking = humanIsHome
                             ? l.includes(`by ${m.away}`)
                             : l.includes(`by ${m.home}`);
+                        lastHumanAttacking = humanAttacking;
                         viz.setState(humanAttacking ? "attack-human" : "attack-ai");
                         viz.saved(humanAttacking);
                     } else if (isIntercept) {
-                        // "Y intercepts" → Y is the defender, so other team was attacking
                         const humanDefends = humanName && l.startsWith(humanName);
+                        lastHumanAttacking = !humanDefends;
                         viz.setState(humanDefends ? "attack-ai" : "attack-human");
                         viz.saved(!humanDefends);
                     } else if (isFinal) {
@@ -484,9 +489,23 @@
                         viz.clearBanner();
                         await delay(600);
                     } else {
-                        // Pressure / pressure lines begin with the attacking team name
-                        const humanAttacking = humanName && l.startsWith(humanName);
-                        viz.setState(humanAttacking ? "attack-human" : "attack-ai");
+                        // Retro outcome lines (no goal-specific marker but a clear result)
+                        const isRetroWide = l.includes("runs through") || l.includes("goes wide") || l.includes("over the bar");
+                        const isRetroSave = l.includes("is blocked") || l.includes("keeper is equal") ||
+                            l.includes("is cleared") || l.includes("saves it!") ||
+                            l.includes("pulls off") || l.includes("denies");
+                        if (isRetroWide) {
+                            needsLongDelay = true;
+                            viz.noGoal(lastHumanAttacking);
+                        } else if (isRetroSave) {
+                            needsLongDelay = true;
+                            viz.saved(lastHumanAttacking);
+                        } else {
+                            // Pressure line: detect which team is attacking
+                            const humanAttacking = humanName && l.startsWith(humanName);
+                            lastHumanAttacking = humanAttacking;
+                            viz.setState(humanAttacking ? "attack-human" : "attack-ai");
+                        }
                     }
 
                     if (l.startsWith("Highlights:")) {
@@ -515,7 +534,7 @@
                     ul.appendChild(li);
                     li.scrollIntoView({ behavior: "smooth", block: "nearest" });
 
-                    await delay(isGoal ? 5000 : isMiss || isSaved || isIntercept ? 4500 : isFinal ? 900 : 900);
+                    await delay(isGoal ? 5000 : isMiss || isSaved || isIntercept || needsLongDelay ? 4500 : isFinal ? 900 : 900);
                 }
 
                 if (financeLines.length) {
@@ -640,31 +659,50 @@
                 this.keeperSave=null; this.keeperTick=0;
                 this.kickTick=0;
                 this.passActive=false; this.passTarget=null;
-                this.dribbleActive=true;
-                this.attackVariant=Math.floor(Math.random()*3);
-                this.passPlanned=Math.random()<0.38;
+                this.passPlanned=false;
                 this.dribblerIdx=humanAttacking?0:2;
-                this.shooterIdx=this.passPlanned
-                    ? (humanAttacking ? 1 : (Math.random()<0.55 ? 3 : 4))
-                    : this.dribblerIdx;
-                this.passTarget=this._shotOrigin(humanAttacking);
-                this.dribbleTarget=this.passPlanned
-                    ? {
-                        px:humanAttacking ? 0.74+Math.random()*0.05 : 0.26-Math.random()*0.05,
-                        py:Math.max(0.32, Math.min(0.68, this.passTarget.py + (Math.random()-.5)*0.16))
-                    }
-                    : this.passTarget;
-                // Ball start: variety of positions (center, attack third, wide flank)
-                const ar=Math.random();
-                if(humanAttacking){
-                    if(ar<0.45){this.bpx=0.60+Math.random()*0.06;this.bpy=0.38+Math.random()*0.24;}
-                    else if(ar<0.75){this.bpx=0.74+Math.random()*0.07;this.bpy=0.32+Math.random()*0.36;}
-                    else{this.bpx=0.70+Math.random()*0.08;this.bpy=Math.random()<0.5?0.04+Math.random()*0.10:0.86+Math.random()*0.10;}
+                this.shooterIdx=this.dribblerIdx;
+
+                const isCorner = Math.random() < 0.22;
+                this.attackVariant = isCorner ? 3 : Math.floor(Math.random()*3);
+
+                if(isCorner){
+                    // Ball starts at corner flag; long wind-up replaces dribble
+                    const cornerY = Math.random()<0.5 ? 0.025 : 0.975;
+                    this.bpx = humanAttacking ? 0.995 : 0.005;
+                    this.bpy = cornerY;
+                    this.dribbleActive = false;
+                    this.kickTick = 30;
+                    this.passTarget = {
+                        px: humanAttacking ? 0.86+Math.random()*0.06 : 0.14-Math.random()*0.06,
+                        py: 0.38+Math.random()*0.24
+                    };
+                    this.dribbleTarget = { px: this.bpx, py: this.bpy };
                 } else {
-                    if(ar<0.45){this.bpx=0.40-Math.random()*0.06;this.bpy=0.38+Math.random()*0.24;}
-                    else if(ar<0.75){this.bpx=0.26-Math.random()*0.07;this.bpy=0.32+Math.random()*0.36;}
-                    else{this.bpx=0.30-Math.random()*0.08;this.bpy=Math.random()<0.5?0.04+Math.random()*0.10:0.86+Math.random()*0.10;}
+                    this.dribbleActive = true;
+                    this.passPlanned = Math.random()<0.38;
+                    this.shooterIdx = this.passPlanned
+                        ? (humanAttacking ? 1 : (Math.random()<0.55 ? 3 : 4))
+                        : this.dribblerIdx;
+                    this.passTarget = this._shotOrigin(humanAttacking);
+                    this.dribbleTarget = this.passPlanned
+                        ? {
+                            px:humanAttacking ? 0.74+Math.random()*0.05 : 0.26-Math.random()*0.05,
+                            py:Math.max(0.32, Math.min(0.68, this.passTarget.py+(Math.random()-.5)*0.16))
+                        }
+                        : this.passTarget;
+                    const ar=Math.random();
+                    if(humanAttacking){
+                        if(ar<0.45){this.bpx=0.60+Math.random()*0.06;this.bpy=0.38+Math.random()*0.24;}
+                        else if(ar<0.75){this.bpx=0.74+Math.random()*0.07;this.bpy=0.32+Math.random()*0.36;}
+                        else{this.bpx=0.70+Math.random()*0.08;this.bpy=Math.random()<0.5?0.04+Math.random()*0.10:0.86+Math.random()*0.10;}
+                    } else {
+                        if(ar<0.45){this.bpx=0.40-Math.random()*0.06;this.bpy=0.38+Math.random()*0.24;}
+                        else if(ar<0.75){this.bpx=0.26-Math.random()*0.07;this.bpy=0.32+Math.random()*0.36;}
+                        else{this.bpx=0.30-Math.random()*0.08;this.bpy=Math.random()<0.5?0.04+Math.random()*0.10:0.86+Math.random()*0.10;}
+                    }
                 }
+
                 // Snap dribbler player to ball start so they move together
                 const dribIdx=this.dribblerIdx;
                 if(this.pl[dribIdx]){
@@ -790,7 +828,7 @@
                 this._pendingResult=null; this._pendingKeeper=null;
                 this._hideOverlay();
             }
-            setState(name) { this._vs=name; this._form(name); this.bpx=this.btpx; this.bpy=this.btpy; }
+            setState(name) { this._vs=name; this._form(name); if(name==="kickoff"||name==="full-time"){this.bpx=this.btpx;this.bpy=this.btpy;} }
             setHumanFormation(d, a) { this._humanD=Math.max(0,d|0); this._humanA=Math.max(1,a|0); }
 
             setFullFormation(hD, hM, hA) {
@@ -892,6 +930,30 @@
                             p.tpx=Math.max(0.01,this.btpx-0.08)+(ci%3-1)*0.025;
                             p.tpy=0.38+Math.floor(ci/3)*0.12;
                             ci++;
+                        }
+                    }
+                }
+                // Corner kick: cluster outfield players in penalty area
+                if(this.attackVariant===3&&(this.kickTick>0||this.shotActive)){
+                    const hAtt=this._vs==="attack-human";
+                    const boxX=hAtt?0.83:0.17;
+                    const boxYs=[0.40,0.46,0.53,0.59,0.44,0.50,0.56,0.42,0.48];
+                    const kickerIdx=hAtt?this._humanAttIdx:this._aiAttIdx;
+                    let bi=0;
+                    for(let pi=0;pi<this.fmPl.length;pi++){
+                        const p=this.fmPl[pi];
+                        if(!p.isGK&&p.human===hAtt&&pi!==kickerIdx){
+                            p.tpx=boxX-(bi%3)*0.04*(hAtt?1:-1);
+                            p.tpy=boxYs[bi%boxYs.length];
+                            bi++;
+                        }
+                    }
+                    let di=0;
+                    for(const p of this.fmPl){
+                        if(!p.isGK&&p.human!==hAtt){
+                            p.tpx=(hAtt?0.88:0.12)+(di%3)*0.03*(hAtt?1:-1);
+                            p.tpy=0.37+(di%6)*0.05;
+                            di++;
                         }
                     }
                 }
@@ -1336,17 +1398,48 @@
 
             _drawShield(cx,cy,w,h,fill,border) {
                 const g=this.g, x=cx-w/2, y=cy-h/2, r=w*0.18;
-                g.beginPath();
-                g.moveTo(x+r,y); g.lineTo(x+w-r,y);
-                g.quadraticCurveTo(x+w,y,x+w,y+r);
-                g.lineTo(x+w,y+h*0.60);
-                g.quadraticCurveTo(x+w,y+h*0.83,cx,y+h);
-                g.quadraticCurveTo(x,y+h*0.83,x,y+h*0.60);
-                g.lineTo(x,y+r);
-                g.quadraticCurveTo(x,y,x+r,y);
-                g.closePath();
-                g.fillStyle=fill; g.fill();
-                g.strokeStyle=border; g.lineWidth=1.5; g.stroke();
+                const P=()=>{
+                    g.beginPath();
+                    g.moveTo(x+r,y);g.lineTo(x+w-r,y);
+                    g.quadraticCurveTo(x+w,y,x+w,y+r);
+                    g.lineTo(x+w,y+h*0.60);
+                    g.quadraticCurveTo(x+w,y+h*0.83,cx,y+h);
+                    g.quadraticCurveTo(x,y+h*0.83,x,y+h*0.60);
+                    g.lineTo(x,y+r);
+                    g.quadraticCurveTo(x,y,x+r,y);
+                    g.closePath();
+                };
+                g.save();
+                P(); g.fillStyle=fill; g.fill();
+                P(); g.clip();
+                const light="rgba(255,255,255,0.22)", dark="rgba(0,0,0,0.14)";
+                const pat=fill==="#ffffff"||fill==="#cccccc"?dark:light;
+                if(fill==="#cc2222"){
+                    // Two vertical white stripes (red kit — AC Milan style)
+                    g.fillStyle=pat;
+                    g.fillRect(cx-w*0.36,y,w*0.17,h);
+                    g.fillRect(cx+w*0.19,y,w*0.17,h);
+                } else if(fill==="#1155cc"){
+                    // Horizontal white band across centre (blue kit — Inter style)
+                    g.fillStyle=pat;
+                    g.fillRect(x,cy-h*0.15,w,h*0.30);
+                } else if(fill==="#111111"){
+                    // Diagonal white stripe (black kit — Juventus style)
+                    g.fillStyle=pat;
+                    g.beginPath();
+                    g.moveTo(cx-w*0.08,y);g.lineTo(cx+w*0.42,y);
+                    g.lineTo(cx+w*0.08,y+h);g.lineTo(cx-w*0.42,y+h);
+                    g.closePath(); g.fill();
+                } else {
+                    // Default: diagonal dark stripe on white/light kit
+                    g.fillStyle=pat;
+                    g.beginPath();
+                    g.moveTo(cx-w*0.08,y);g.lineTo(cx+w*0.42,y);
+                    g.lineTo(cx+w*0.08,y+h);g.lineTo(cx-w*0.42,y+h);
+                    g.closePath(); g.fill();
+                }
+                g.restore();
+                P(); g.strokeStyle=border; g.lineWidth=1.5; g.stroke();
             }
 
             _ball(x, y, r) {
