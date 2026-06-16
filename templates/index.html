@@ -1291,40 +1291,61 @@
             _drawScoreboard() {
                 if(!this.homeTeam) return;
                 const {g,W}=this;
-                const mh=50, th=30; // main row + time row
+                const mh=68, th=26;
                 g.save();
-                g.fillStyle="#009b80";
+                g.fillStyle="#111111";
                 g.fillRect(0,0,W,mh);
                 const goalActive=this.goalTick>0;
-                g.fillStyle=goalActive?"#bb1111":"#007060";
+                g.fillStyle=goalActive?"#990000":"#1c1c1c";
                 g.fillRect(0,mh,W,th);
                 const cy=mh/2, cx=W/2;
-                g.textBaseline="middle";
-                const short=(n)=>n.length>12?n.substring(0,11)+"…":n;
-                g.font="bold 15px sans-serif";
-                g.fillStyle="#ffffff";
-                g.textAlign="center";
-                g.fillText(short(this.homeTeam).toUpperCase(),W*0.22,cy);
-                g.fillText(short(this.awayTeam).toUpperCase(),W*0.78,cy);
-                const bw=44,bh2=38,gap=8;
-                g.fillStyle="#ffffff";
-                g.fillRect(cx-bw-gap/2,cy-bh2/2,bw,bh2);
-                g.fillRect(cx+gap/2,cy-bh2/2,bw,bh2);
-                g.font="bold 24px monospace";
-                g.fillStyle="#111111";
-                g.fillText(String(this.hg),cx-bw/2-gap/2,cy+1);
-                g.fillText(String(this.ag),cx+bw/2+gap/2,cy+1);
+                const short=(n)=>n.length>11?n.substring(0,10)+"…":n;
+                // Score — large, centered
+                g.textBaseline="middle"; g.textAlign="center";
+                g.font="bold 40px monospace"; g.fillStyle="#ffffff";
+                g.fillText(String(this.hg),cx-W*0.045,cy+1);
+                g.fillText(String(this.ag),cx+W*0.045,cy+1);
+                g.font="bold 20px monospace"; g.fillStyle="#555555";
+                g.fillText("–",cx,cy+1);
+                // Shields (shirt-color crests)
+                const sw=W*0.038, sh=W*0.052;
+                this._drawShield(cx-W*0.115,cy,sw,sh,"#ffffff","#888888");
+                const ac=this.aiColor;
+                this._drawShield(cx+W*0.115,cy,sw,sh,ac,ac==="#111111"?"#555555":"rgba(0,0,0,0.5)");
+                // Team names
+                g.font=`bold ${Math.max(11,Math.min(14,W*0.019))}px sans-serif`;
+                g.fillStyle="#ffffff"; g.textBaseline="middle";
+                g.textAlign="right";
+                g.fillText(short(this.homeTeam).toUpperCase(),cx-W*0.148,cy+1);
+                g.textAlign="left";
+                g.fillText(short(this.awayTeam).toUpperCase(),cx+W*0.148,cy+1);
+                // Time / GOAL! row
                 const min=this.matchMinute??0;
                 const rowCy=mh+th/2;
                 g.textAlign="center"; g.textBaseline="middle";
                 if(goalActive){
-                    g.font="bold 17px monospace"; g.fillStyle="#f7f15b";
+                    g.font="bold 15px monospace"; g.fillStyle="#f7f15b";
                     g.fillText(`GOAL!  ${min}'`,cx,rowCy);
                 } else {
-                    g.font="bold 18px monospace"; g.fillStyle="#ccffee";
+                    g.font="bold 16px monospace"; g.fillStyle="#999999";
                     g.fillText(`${min}'`,cx,rowCy);
                 }
                 g.restore();
+            }
+
+            _drawShield(cx,cy,w,h,fill,border) {
+                const g=this.g, x=cx-w/2, y=cy-h/2, r=w*0.18;
+                g.beginPath();
+                g.moveTo(x+r,y); g.lineTo(x+w-r,y);
+                g.quadraticCurveTo(x+w,y,x+w,y+r);
+                g.lineTo(x+w,y+h*0.60);
+                g.quadraticCurveTo(x+w,y+h*0.83,cx,y+h);
+                g.quadraticCurveTo(x,y+h*0.83,x,y+h*0.60);
+                g.lineTo(x,y+r);
+                g.quadraticCurveTo(x,y,x+r,y);
+                g.closePath();
+                g.fillStyle=fill; g.fill();
+                g.strokeStyle=border; g.lineWidth=1.5; g.stroke();
             }
 
             _ball(x, y, r) {
