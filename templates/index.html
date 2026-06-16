@@ -600,7 +600,7 @@
                 const _pal=["#111111","#cc2222","#1155cc"];
                 this.aiColor=_pal[Math.floor(Math.random()*_pal.length)];
                 this.hg=0; this.ag=0; this._vs="kickoff";
-                this.matchMinute=0;
+                this.matchMinute=0; this._secondHalf=false;
                 this.goalTick=0; this.bannType=null; this.bannTick=0;
                 this.shotActive=false; this._pending=null;
                 this.shotStart=null; this.shotTraceTick=0;
@@ -616,7 +616,13 @@
             }
 
             setScore(h, a) { this.hg=h; this.ag=a; }
-            setMatchMinute(m) { this.matchMinute=m|0; }
+            setMatchMinute(m) {
+                this.matchMinute=m|0;
+                if(!this._secondHalf && this.matchMinute>=45 && this.fmPl.length){
+                    this._secondHalf=true;
+                    for(const p of this.fmPl){ p.fpx=1-p.fpx; p.tpx=1-p.tpx; p.px=1-p.px; }
+                }
+            }
 
             _shotOrigin(attackingRight) {
                 return attackingRight
@@ -1268,6 +1274,7 @@
                     this._keeper(ks.x,ks.y,this.keeperSave.human);
                 }
                 g.restore();
+                this._drawBanner();
                 this._drawScoreboard();
                 this._updateOverlay();
             }
@@ -1275,40 +1282,38 @@
             _drawScoreboard() {
                 if(!this.homeTeam) return;
                 const {g,W}=this;
-                const bh=42;
+                const mh=46, th=22; // main row + time row
                 g.save();
-                g.fillStyle="rgba(0,0,0,0.82)";
-                g.fillRect(0,0,W,bh);
-                const cy=bh/2;
+                // Teal background
+                g.fillStyle="#009b80";
+                g.fillRect(0,0,W,mh);
+                g.fillStyle="#007060";
+                g.fillRect(0,mh,W,th);
+                const cy=mh/2;
                 g.textBaseline="middle";
-                // Shorten long team names
-                const short=(n)=>n.length>13?n.substring(0,12)+"…":n;
-                // Home (left quarter)
-                g.font="bold 13px monospace";
-                g.fillStyle="#cccccc";
-                g.textAlign="center";
-                g.fillText(short(this.homeTeam).toUpperCase(),W*0.22,cy);
-                // Score (center, large)
-                g.font="bold 22px monospace";
+                const short=(n)=>n.length>12?n.substring(0,11)+"…":n;
+                // Team names
+                g.font="bold 14px sans-serif";
                 g.fillStyle="#ffffff";
                 g.textAlign="center";
-                g.fillText(`${this.hg}  –  ${this.ag}`,W*0.50,cy);
-                // Away (right quarter)
-                g.font="bold 13px monospace";
-                g.fillStyle="#cccccc";
+                g.fillText(short(this.homeTeam).toUpperCase(),W*0.22,cy);
                 g.fillText(short(this.awayTeam).toUpperCase(),W*0.78,cy);
-                // Minute badge (far right)
+                // Score boxes (white bg, dark text)
+                const bw=42,bh2=36,gap=8,cx=W/2;
+                g.fillStyle="#ffffff";
+                g.fillRect(cx-bw-gap/2,cy-bh2/2,bw,bh2);
+                g.fillRect(cx+gap/2,cy-bh2/2,bw,bh2);
+                g.font="bold 22px monospace";
+                g.fillStyle="#111111";
+                g.fillText(String(this.hg),cx-bw/2-gap/2,cy+1);
+                g.fillText(String(this.ag),cx+bw/2+gap/2,cy+1);
+                // Time in sub-row
                 const min=this.matchMinute??0;
-                const ts=`${min}'`;
-                const tx=W-34, tmw=42, tmh=26;
-                g.fillStyle="#0d4d0d";
-                g.beginPath();
-                g.roundRect?g.roundRect(tx-tmw/2,cy-tmh/2,tmw,tmh,5):g.fillRect(tx-tmw/2,cy-tmh/2,tmw,tmh);
-                g.fill();
-                g.font="bold 14px monospace";
-                g.fillStyle="#88ff88";
+                const ts=`${min}:00`;
+                g.font="bold 13px monospace";
+                g.fillStyle="#ccffee";
                 g.textAlign="center";
-                g.fillText(ts,tx,cy+1);
+                g.fillText(ts,cx,mh+th/2);
                 g.restore();
             }
 
@@ -1361,27 +1366,54 @@
                 g.beginPath(); g.moveTo(x,y+s*.08); g.lineTo(x+s*.42,y+s*.55); g.stroke();
             }
 
+            _drawBanner() {
+                const {g,W,H}=this;
+                const sbH=68; // scoreboard height — banner stays below it
+                const pitchCy=sbH+(H-sbH)/2;
+                g.save();
+                if(this.goalTick>0){
+                    const bw=Math.min(W*0.68,520), bh=84;
+                    const bx=W/2-bw/2, by=pitchCy-bh/2;
+                    g.fillStyle="#bb1111";
+                    g.fillRect(bx,by,bw,bh);
+                    g.fillStyle="#f7f15b";
+                    g.fillRect(bx+bw*0.08,by,bw*0.84,bh);
+                    g.font=`bold ${Math.round(bh*0.64)}px monospace`;
+                    g.fillStyle="#bb1111";
+                    g.textAlign="center";
+                    g.textBaseline="middle";
+                    g.fillText("GOAL!",W/2,pitchCy+2);
+                } else if(this.bannTick>0){
+                    const text=this.bannType==="nogoal"?"NO GOAL!":"SAVED!";
+                    const bw=Math.min(W*0.46,360), bh=56;
+                    g.fillStyle="rgba(0,0,0,0.85)";
+                    g.fillRect(W/2-bw/2,pitchCy-bh/2,bw,bh);
+                    g.strokeStyle="#555555"; g.lineWidth=3;
+                    g.strokeRect(W/2-bw/2,pitchCy-bh/2,bw,bh);
+                    g.font=`bold ${Math.round(bh*0.52)}px monospace`;
+                    g.fillStyle="#ffffff";
+                    g.textAlign="center";
+                    g.textBaseline="middle";
+                    g.fillText(text,W/2,pitchCy+1);
+                }
+                g.restore();
+            }
+
             _updateOverlay() {
+                // Banner drawn on canvas; HTML element kept for accessibility only
                 const el=document.getElementById("matchOverlay");
                 if(!el) return;
-                if(this.goalTick>0) {
-                    el.className="match-overlay show goal";
-                    el.innerHTML='<div class="goal-panel"><span>GOAL!</span></div>';
-                } else if(this.bannTick>0) {
-                    const text=this.bannType==="nogoal"?"NO GOAL!":"SAVED!";
-                    el.className="match-overlay show simple";
-                    el.textContent=text;
-                } else {
-                    el.className="match-overlay";
-                    el.textContent="";
-                }
+                el.className="match-overlay"; // never show visually
+                if(this.goalTick>0) el.setAttribute("aria-label","Goal!");
+                else if(this.bannTick>0) el.setAttribute("aria-label",this.bannType==="nogoal"?"No Goal!":"Saved!");
+                else el.removeAttribute("aria-label");
             }
 
             _hideOverlay() {
                 const el=document.getElementById("matchOverlay");
                 if(!el) return;
                 el.className="match-overlay";
-                el.textContent="";
+                el.removeAttribute("aria-label");
             }
 
             destroy() { if(this._raf){cancelAnimationFrame(this._raf);this._raf=null;} }
