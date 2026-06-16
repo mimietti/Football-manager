@@ -585,6 +585,7 @@
                 this.keeperSave=null; this.keeperTick=0;
                 this.dribbleActive=false; this.dribbleTarget=null; this.dribbleStep=0.0009;
                 this.passActive=false; this.passTarget=null; this.passStep=0.0045;
+                this.wallReturnActive=false; this.wallReturnTarget=null;
                 this.dribblerIdx=0; this.shooterIdx=0; this.passPlanned=false;
                 this.kickTick=0; this.kickDuration=18;
                 this._pendingBtpx=0; this._pendingBtpy=0;
@@ -659,12 +660,14 @@
                 this.keeperSave=null; this.keeperTick=0;
                 this.kickTick=0;
                 this.passActive=false; this.passTarget=null;
+                this.wallReturnActive=false; this.wallReturnTarget=null;
                 this.passPlanned=false;
                 this.dribblerIdx=humanAttacking?0:2;
                 this.shooterIdx=this.dribblerIdx;
 
                 const isCorner = Math.random() < 0.22;
-                this.attackVariant = isCorner ? 3 : Math.floor(Math.random()*3);
+                const isWallPass = !isCorner && Math.random() < 0.20;
+                this.attackVariant = isCorner ? 3 : isWallPass ? 4 : Math.floor(Math.random()*3);
 
                 if(isCorner){
                     // Ball starts at corner flag; long wind-up replaces dribble
@@ -680,17 +683,7 @@
                     this.dribbleTarget = { px: this.bpx, py: this.bpy };
                 } else {
                     this.dribbleActive = true;
-                    this.passPlanned = Math.random()<0.38;
-                    this.shooterIdx = this.passPlanned
-                        ? (humanAttacking ? 1 : (Math.random()<0.55 ? 3 : 4))
-                        : this.dribblerIdx;
-                    this.passTarget = this._shotOrigin(humanAttacking);
-                    this.dribbleTarget = this.passPlanned
-                        ? {
-                            px:humanAttacking ? 0.74+Math.random()*0.05 : 0.26-Math.random()*0.05,
-                            py:Math.max(0.32, Math.min(0.68, this.passTarget.py+(Math.random()-.5)*0.16))
-                        }
-                        : this.passTarget;
+                    // Ball starting position (same for all normal variants)
                     const ar=Math.random();
                     if(humanAttacking){
                         if(ar<0.45){this.bpx=0.60+Math.random()*0.06;this.bpy=0.38+Math.random()*0.24;}
@@ -700,6 +693,34 @@
                         if(ar<0.45){this.bpx=0.40-Math.random()*0.06;this.bpy=0.38+Math.random()*0.24;}
                         else if(ar<0.75){this.bpx=0.26-Math.random()*0.07;this.bpy=0.32+Math.random()*0.36;}
                         else{this.bpx=0.30-Math.random()*0.08;this.bpy=Math.random()<0.5?0.04+Math.random()*0.10:0.86+Math.random()*0.10;}
+                    }
+                    if(isWallPass){
+                        // Wall pass (seinäsyöttö): give-and-go — same player passes then runs to receive
+                        this.passPlanned=true;
+                        this.shooterIdx=this.dribblerIdx;
+                        const wallSide=(Math.random()<0.5?1:-1);
+                        const wallX=humanAttacking?0.72+Math.random()*0.08:0.28-Math.random()*0.08;
+                        const wallY=Math.max(0.33,Math.min(0.67,this.bpy+wallSide*(0.09+Math.random()*0.07)));
+                        this.passTarget={px:wallX,py:wallY};
+                        const retX=humanAttacking?wallX+0.09+Math.random()*0.07:wallX-0.09-Math.random()*0.07;
+                        const retY=Math.max(0.35,Math.min(0.65,this.bpy+wallSide*0.03+(Math.random()-.5)*0.05));
+                        this.wallReturnTarget={px:retX,py:retY};
+                        this.dribbleTarget={
+                            px:humanAttacking?wallX-0.07+Math.random()*0.04:wallX+0.07-Math.random()*0.04,
+                            py:Math.max(0.35,Math.min(0.65,this.bpy*0.7+wallY*0.3))
+                        };
+                    } else {
+                        this.passPlanned=Math.random()<0.38;
+                        this.shooterIdx=this.passPlanned
+                            ?(humanAttacking?1:(Math.random()<0.55?3:4))
+                            :this.dribblerIdx;
+                        this.passTarget=this._shotOrigin(humanAttacking);
+                        this.dribbleTarget=this.passPlanned
+                            ?{
+                                px:humanAttacking?0.74+Math.random()*0.05:0.26-Math.random()*0.05,
+                                py:Math.max(0.32,Math.min(0.68,this.passTarget.py+(Math.random()-.5)*0.16))
+                            }
+                            :this.passTarget;
                     }
                 }
 
@@ -907,7 +928,7 @@
                 for(const p of this.fmPl){p.tpx=p.fpx+(p.jx||0);p.tpy=p.fpy+(p.jy||0);}
                 if(this._vs==="attack-human"||this._vs==="attack-ai"){
                     const humanAtt=this._vs==="attack-human";
-                    if(this.dribbleActive||this.passActive||this.kickTick>0){
+                    if(this.dribbleActive||this.passActive||this.wallReturnActive||this.kickTick>0){
                         const fi=humanAtt?this._humanAttIdx:this._aiAttIdx;
                         const carrier=fi>=0?this.fmPl[fi]:null;
                         const plC=this.pl[this.dribblerIdx];
@@ -918,6 +939,12 @@
                             const support=si>=0?this.fmPl[si]:null;
                             const plS=this.pl[this.shooterIdx];
                             if(support&&plS){support.tpx=plS.tpx;support.tpy=plS.tpy;}
+                        }
+                        // Wall pass: show the wall player at passTarget position
+                        if(this.attackVariant===4&&(this.passActive||this.wallReturnActive)){
+                            const wi=humanAtt?this._humanSupportIdx:this._aiSupportIdx;
+                            const wallFm=wi>=0?this.fmPl[wi]:null;
+                            if(wallFm){wallFm.tpx=this.passTarget.px;wallFm.tpy=this.passTarget.py;}
                         }
                     }
                     // Human defenders drop back when AI attacks
@@ -975,7 +1002,7 @@
                     if(dist<=this.dribbleStep) {
                         this.bpx=this.dribbleTarget.px; this.bpy=this.dribbleTarget.py;
                         this.dribbleActive=false;
-                        if(this.passPlanned && this.shooterIdx!==this.dribblerIdx) {
+                        if(this.passPlanned) {
                             this.passActive=true;
                         } else {
                             this.kickTick=this.kickDuration;
@@ -987,7 +1014,13 @@
                 } else if(this.passActive) {
                     this._moveOffBall();
                     const fwd=this._vs==="attack-ai"?-0.02:0.02;
-                    if(this.pl[this.shooterIdx]){
+                    if(this.attackVariant===4){
+                        // Wall pass: dribbler runs to return position while ball travels to wall
+                        if(this.pl[this.dribblerIdx]){
+                            this.pl[this.dribblerIdx].tpx=this.wallReturnTarget.px;
+                            this.pl[this.dribblerIdx].tpy=this.wallReturnTarget.py;
+                        }
+                    } else if(this.pl[this.shooterIdx]){
                         this.pl[this.shooterIdx].tpx=this.passTarget.px+fwd;
                         this.pl[this.shooterIdx].tpy=this.passTarget.py;
                     }
@@ -996,10 +1029,34 @@
                     if(dist<=this.passStep) {
                         this.bpx=this.passTarget.px; this.bpy=this.passTarget.py;
                         this.passActive=false;
-                        this.kickTick=this.kickDuration;
+                        if(this.attackVariant===4) {
+                            this.wallReturnActive=true;
+                        } else {
+                            this.kickTick=this.kickDuration;
+                        }
                     } else {
                         this.bpx+=(dx/dist)*this.passStep;
                         this.bpy+=(dy/dist)*this.passStep;
+                    }
+                } else if(this.wallReturnActive) {
+                    // Wall player returns the ball to the dribbler's run-in position
+                    this._moveOffBall();
+                    if(this.pl[this.dribblerIdx]){
+                        this.pl[this.dribblerIdx].tpx=this.wallReturnTarget.px;
+                        this.pl[this.dribblerIdx].tpy=this.wallReturnTarget.py;
+                        this.pl[this.dribblerIdx].px=this.wallReturnTarget.px;
+                        this.pl[this.dribblerIdx].py=this.wallReturnTarget.py;
+                    }
+                    const dx=this.wallReturnTarget.px-this.bpx, dy=this.wallReturnTarget.py-this.bpy;
+                    const dist=Math.sqrt(dx*dx+dy*dy);
+                    const retStep=this.passStep*1.5;
+                    if(dist<=retStep){
+                        this.bpx=this.wallReturnTarget.px; this.bpy=this.wallReturnTarget.py;
+                        this.wallReturnActive=false;
+                        this.kickTick=this.kickDuration;
+                    } else {
+                        this.bpx+=(dx/dist)*retStep;
+                        this.bpy+=(dy/dist)*retStep;
                     }
                 } else if(this.kickTick>0) {
                     this._moveOffBall();
