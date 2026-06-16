@@ -579,7 +579,7 @@
                 this.fmPl=[];
                 this.bpx=.50; this.bpy=.50; this.btpx=.50; this.btpy=.50;
                 this.bannType=null; this.bannTick=0; this.bannHuman=true;
-                this.shotActive=false; this.shotStep=0.007; this._pending=null;
+                this.shotActive=false; this.shotStep=0.007; this.cornerCross=false; this._pending=null;
                 this.shotStart=null; this.shotTraceTick=0;
                 this.goalDelayTick=0;
                 this.keeperSave=null; this.keeperTick=0;
@@ -654,7 +654,7 @@
                 this._attackVs = humanAttacking ? "attack-human" : "attack-ai";
                 this.setState(this._attackVs);
                 this.goalTick=0; this.goalDelayTick=0; this.bannTick=0;
-                this.shotActive=false; this._pending=null;
+                this.shotActive=false; this.shotStep=0.007; this.cornerCross=false; this._pending=null;
                 this.shotStart=null; this.shotTraceTick=0;
                 this.keeperSave=null; this.keeperTick=0;
                 this.kickTick=0;
@@ -714,6 +714,11 @@
                 if(fmSnapIdx>=0&&this.fmPl[fmSnapIdx]){
                     this.fmPl[fmSnapIdx].px=this.bpx; this.fmPl[fmSnapIdx].py=this.bpy;
                     this.fmPl[fmSnapIdx].tpx=this.bpx; this.fmPl[fmSnapIdx].tpy=this.bpy;
+                }
+                // Random positional jitter so off-ball players don't stand in static formation rows
+                for(const p of this.fmPl){
+                    p.jx=(Math.random()-.5)*0.07;
+                    p.jy=(Math.random()-.5)*0.10;
                 }
                 this._shapeAttack(humanAttacking);
             }
@@ -899,7 +904,7 @@
                 const sp=0.07;
                 for(const p of this.pl){p.px+=(p.tpx-p.px)*sp;p.py+=(p.tpy-p.py)*sp;}
                 // fmPl sync: reset to formation, then apply attack/celebration overrides
-                for(const p of this.fmPl){p.tpx=p.fpx;p.tpy=p.fpy;}
+                for(const p of this.fmPl){p.tpx=p.fpx+(p.jx||0);p.tpy=p.fpy+(p.jy||0);}
                 if(this._vs==="attack-human"||this._vs==="attack-ai"){
                     const humanAtt=this._vs==="attack-human";
                     if(this.dribbleActive||this.passActive||this.kickTick>0){
@@ -1011,13 +1016,23 @@
                     if(dist<=this.shotStep) {
                         this.bpx=this.btpx; this.bpy=this.btpy;
                         this.shotActive=false;
-                        if(this._pending==="goal") this.goalDelayTick=75;
-                        else if(this._pending==="nogoal") this.bannTick=270+Math.floor(Math.random()*30);
-                        else if(this._pending==="saved") {
-                            this.bannTick=260+Math.floor(Math.random()*30);
-                            this.keeperTick=this.bannTick;
+                        if(this.cornerCross) {
+                            // Cross arrived in box — launch header/shot toward final target
+                            this.cornerCross=false;
+                            this.shotStart={px:this.bpx, py:this.bpy};
+                            this.shotTraceTick=100;
+                            this.btpx=this._pendingBtpx; this.btpy=this._pendingBtpy;
+                            this.shotStep=0.013;
+                            this.shotActive=true;
+                        } else {
+                            if(this._pending==="goal") this.goalDelayTick=75;
+                            else if(this._pending==="nogoal") this.bannTick=270+Math.floor(Math.random()*30);
+                            else if(this._pending==="saved") {
+                                this.bannTick=260+Math.floor(Math.random()*30);
+                                this.keeperTick=this.bannTick;
+                            }
+                            this._pending=null;
                         }
-                        this._pending=null;
                     } else {
                         this.bpx+=(dx/dist)*this.shotStep;
                         this.bpy+=(dy/dist)*this.shotStep;
@@ -1039,7 +1054,14 @@
             }
 
             _launchShot() {
-                this.btpx=this._pendingBtpx; this.btpy=this._pendingBtpy;
+                if(this.attackVariant===3 && !this.cornerCross) {
+                    // Corner: cross into box first, then header/clearance in second phase
+                    this.cornerCross=true;
+                    this.btpx=this.passTarget.px;
+                    this.btpy=this.passTarget.py;
+                } else {
+                    this.btpx=this._pendingBtpx; this.btpy=this._pendingBtpy;
+                }
                 this.shotStart={px:this.bpx, py:this.bpy};
                 this.shotTraceTick=180;
                 if(this._pendingResult==="saved") {
