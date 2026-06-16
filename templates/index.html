@@ -428,6 +428,9 @@
                     if (isBoringLine(l)) continue;
                     const eventMeta = eventMinutes[eventIndex++] || { minute: 45, line: l };
                     viz.setMatchMinute(eventMeta.minute);
+                    // In the second half formations are x-flipped, so flip attack direction for viz
+                    const inSecondHalf = eventMeta.minute > 45;
+                    const vizDir = b => inSecondHalf ? !b : b;
 
                     const isFinal  = l.startsWith("Final score:");
                     const isGoal   = l.startsWith("GOAL");
@@ -449,25 +452,25 @@
                         const humanScored = humanIsHome ? curHome > prevHome : curAway > prevAway;
                         lastHumanAttacking = humanScored;
                         viz.setScore(curHome, curAway);
-                        viz.goal(humanScored);
+                        viz.goal(vizDir(humanScored));
                     } else if (isMiss) {
                         const humanMissed = humanName && l.startsWith(humanName);
                         lastHumanAttacking = humanMissed;
-                        viz.setState(humanMissed ? "attack-human" : "attack-ai");
-                        viz.noGoal(humanMissed);
+                        viz.setState(vizDir(humanMissed) ? "attack-human" : "attack-ai");
+                        viz.noGoal(vizDir(humanMissed));
                     } else if (isSaved) {
                         // "X is saved" → X was the attacker
                         const humanAttacking = humanIsHome
                             ? l.includes(`by ${m.away}`)
                             : l.includes(`by ${m.home}`);
                         lastHumanAttacking = humanAttacking;
-                        viz.setState(humanAttacking ? "attack-human" : "attack-ai");
-                        viz.saved(humanAttacking);
+                        viz.setState(vizDir(humanAttacking) ? "attack-human" : "attack-ai");
+                        viz.saved(vizDir(humanAttacking));
                     } else if (isIntercept) {
                         const humanDefends = humanName && l.startsWith(humanName);
                         lastHumanAttacking = !humanDefends;
-                        viz.setState(humanDefends ? "attack-ai" : "attack-human");
-                        viz.saved(!humanDefends);
+                        viz.setState(vizDir(!humanDefends) ? "attack-human" : "attack-ai");
+                        viz.saved(vizDir(!humanDefends));
                     } else if (isFinal) {
                         curHome = m.home_goals;
                         curAway = m.away_goals;
@@ -483,15 +486,15 @@
                             l.includes("pulls off") || l.includes("denies");
                         if (isRetroWide) {
                             needsLongDelay = true;
-                            viz.noGoal(lastHumanAttacking);
+                            viz.noGoal(vizDir(lastHumanAttacking));
                         } else if (isRetroSave) {
                             needsLongDelay = true;
-                            viz.saved(lastHumanAttacking);
+                            viz.saved(vizDir(lastHumanAttacking));
                         } else {
                             // Pressure line: detect which team is attacking
                             const humanAttacking = humanName && l.startsWith(humanName);
                             lastHumanAttacking = humanAttacking;
-                            viz.setState(humanAttacking ? "attack-human" : "attack-ai");
+                            viz.setState(vizDir(humanAttacking) ? "attack-human" : "attack-ai");
                         }
                     }
 
