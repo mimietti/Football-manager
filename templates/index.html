@@ -587,9 +587,13 @@
             // Set parallelogram corners relative to current canvas size
             _corners() {
                 const W=this.W, H=this.H;
-                this.C.tl = {x:W*0.090, y:H*0.18};
-                this.C.tr = {x:W*0.952, y:H*0.06};
-                this.C.bl = {x:W*0.108, y:H*0.90};
+                // Push pitch below the scoreboard (mh=68 + th=26 = 94px) with small margins
+                const sb=98;
+                const pitchH=Math.max(200, H-sb-6);
+                const slant=pitchH/7;
+                this.C.tl = {x:W*0.090, y:sb+slant};
+                this.C.tr = {x:W*0.952, y:sb};
+                this.C.bl = {x:W*0.108, y:sb+pitchH};
                 const C=this.C;
                 C.br = {x:C.bl.x+C.tr.x-C.tl.x, y:C.bl.y+C.tr.y-C.tl.y};
             }
@@ -849,23 +853,23 @@
 
             setFullFormation(hD, hM, hA) {
                 const fm=[];
-                const spread=(n,x,human)=>{
+                const spread=(n,x,human,role)=>{
                     if(n<=0) return;
                     const ys=n===1?[.50]:n===2?[.36,.64]:n===3?[.28,.50,.72]:n===4?[.22,.40,.60,.78]:
                         n===5?[.18,.32,.50,.68,.82]:Array.from({length:n},(_,i)=>0.15+(0.70/Math.max(1,n-1))*i);
-                    ys.forEach(py=>fm.push({px:x,py,tpx:x,tpy:py,human}));
+                    ys.forEach(py=>fm.push({px:x,py,tpx:x,tpy:py,human,role}));
                 };
                 // Show actual active players — no padding to 11
                 let d=hD|0, m=hM|0, a=hA|0;
                 // First available player becomes GK
-                if(d>0){fm.push({px:.03,py:.50,tpx:.03,tpy:.50,human:true,isGK:true});d--;}
-                else if(m>0){fm.push({px:.03,py:.50,tpx:.03,tpy:.50,human:true,isGK:true});m--;}
-                else if(a>0){fm.push({px:.03,py:.50,tpx:.03,tpy:.50,human:true,isGK:true});a--;}
-                spread(d,.14,true); spread(m,.31,true); spread(a,.49,true);
+                if(d>0){fm.push({px:.03,py:.50,tpx:.03,tpy:.50,human:true,isGK:true,role:'G'});d--;}
+                else if(m>0){fm.push({px:.03,py:.50,tpx:.03,tpy:.50,human:true,isGK:true,role:'G'});m--;}
+                else if(a>0){fm.push({px:.03,py:.50,tpx:.03,tpy:.50,human:true,isGK:true,role:'G'});a--;}
+                spread(d,.14,true,'D'); spread(m,.31,true,'M'); spread(a,.49,true,'A');
                 // AI: 1 GK + 4D + 4M + 2A = 11
-                fm.push({px:.97,py:.50,tpx:.97,tpy:.50,human:false,isGK:true});
-                spread(4,.86,false); spread(4,.69,false); spread(2,.51,false);
-                this.fmPl=fm.map(p=>({px:p.px,py:p.py,tpx:p.tpx,tpy:p.tpy,fpx:p.px,fpy:p.py,human:p.human,isGK:p.isGK||false}));
+                fm.push({px:.97,py:.50,tpx:.97,tpy:.50,human:false,isGK:true,role:'G'});
+                spread(4,.86,false,'D'); spread(4,.69,false,'M'); spread(2,.51,false,'A');
+                this.fmPl=fm.map(p=>({px:p.px,py:p.py,tpx:p.tpx,tpy:p.tpy,fpx:p.px,fpy:p.py,human:p.human,isGK:p.isGK||false,role:p.role||'D'}));
                 const hIdxs=this.fmPl.map((p,i)=>p.human&&!p.isGK?i:-1).filter(i=>i>=0);
                 const aIdxs=this.fmPl.map((p,i)=>!p.human&&!p.isGK?i:-1).filter(i=>i>=0);
                 this._humanAttIdx=hIdxs[hIdxs.length-1]??-1;
@@ -958,23 +962,32 @@
                 // Corner kick: cluster outfield players in penalty area
                 if(this.attackVariant===3&&(this.kickTick>0||this.shotActive)){
                     const hAtt=this._vs==="attack-human";
-                    const boxX=hAtt?0.89:0.11;
-                    const boxYs=[0.40,0.46,0.53,0.59,0.44,0.50,0.56,0.42,0.48];
+                    const boxX=hAtt?0.87:0.13;
+                    const boxYs=[0.40,0.47,0.54,0.60,0.44,0.51,0.57];
                     const kickerIdx=hAtt?this._humanAttIdx:this._aiAttIdx;
-                    let bi=0;
+                    // Attacking team: defenders stay back as counter-cover; mids+fwds fill box
+                    let boxI=0, covI=0;
                     for(let pi=0;pi<this.fmPl.length;pi++){
                         const p=this.fmPl[pi];
                         if(!p.isGK&&p.human===hAtt&&pi!==kickerIdx){
-                            p.tpx=boxX-(bi%3)*0.04*(hAtt?1:-1);
-                            p.tpy=boxYs[bi%boxYs.length];
-                            bi++;
+                            if(p.role==='D'){
+                                // Stay in midfield to cover break
+                                p.tpx=hAtt?0.44+covI*0.06:0.56-covI*0.06;
+                                p.tpy=0.32+covI*0.18;
+                                covI++;
+                            } else {
+                                p.tpx=boxX-(boxI%3)*0.04*(hAtt?1:-1);
+                                p.tpy=boxYs[boxI%boxYs.length];
+                                boxI++;
+                            }
                         }
                     }
+                    // Defending team: pack the box
                     let di=0;
                     for(const p of this.fmPl){
                         if(!p.isGK&&p.human!==hAtt){
-                            p.tpx=(hAtt?0.92:0.08)+(di%3)*0.03*(hAtt?1:-1);
-                            p.tpy=0.37+(di%6)*0.05;
+                            p.tpx=(hAtt?0.91:0.09)+(di%3)*0.025*(hAtt?1:-1);
+                            p.tpy=0.35+(di%7)*0.05;
                             di++;
                         }
                     }
