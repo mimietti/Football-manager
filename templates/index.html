@@ -239,7 +239,7 @@
             if (!state) return;
             const phase = uiPhase;
             const hasActiveGame = (state.human_teams || []).length > 0;
-            document.getElementById("statusBar").style.display = hasActiveGame ? "" : "none";
+            document.getElementById("statusBar").style.display = (hasActiveGame && phase !== "playing") ? "" : "none";
             document.getElementById("setupControls").style.display = (hasActiveGame && phase === "pre") ? "" : "none";
             document.getElementById("preMatchPanel").style.display = (hasActiveGame && phase === "pre") ? "" : "none";
             document.getElementById("matchVisual").style.display = phase === "playing" ? "" : "none";
@@ -438,6 +438,7 @@
                     if (isFinanceLine(l)) { financeLines.push(l); continue; }
                     if (isBoringLine(l)) continue;
                     const eventMeta = eventMinutes[eventIndex++] || { minute: 45, line: l };
+                    viz.setMatchMinute(eventMeta.minute);
 
                     const isFinal  = l.startsWith("Final score:");
                     const isGoal   = l.startsWith("GOAL");
@@ -599,6 +600,7 @@
                 const _pal=["#111111","#cc2222","#1155cc"];
                 this.aiColor=_pal[Math.floor(Math.random()*_pal.length)];
                 this.hg=0; this.ag=0; this._vs="kickoff";
+                this.matchMinute=0;
                 this.goalTick=0; this.bannType=null; this.bannTick=0;
                 this.shotActive=false; this._pending=null;
                 this.shotStart=null; this.shotTraceTick=0;
@@ -614,6 +616,7 @@
             }
 
             setScore(h, a) { this.hg=h; this.ag=a; }
+            setMatchMinute(m) { this.matchMinute=m|0; }
 
             _shotOrigin(attackingRight) {
                 return attackingRight
@@ -1265,7 +1268,48 @@
                     this._keeper(ks.x,ks.y,this.keeperSave.human);
                 }
                 g.restore();
+                this._drawScoreboard();
                 this._updateOverlay();
+            }
+
+            _drawScoreboard() {
+                if(!this.homeTeam) return;
+                const {g,W}=this;
+                const bh=42;
+                g.save();
+                g.fillStyle="rgba(0,0,0,0.82)";
+                g.fillRect(0,0,W,bh);
+                const cy=bh/2;
+                g.textBaseline="middle";
+                // Shorten long team names
+                const short=(n)=>n.length>13?n.substring(0,12)+"…":n;
+                // Home (left quarter)
+                g.font="bold 13px monospace";
+                g.fillStyle="#cccccc";
+                g.textAlign="center";
+                g.fillText(short(this.homeTeam).toUpperCase(),W*0.22,cy);
+                // Score (center, large)
+                g.font="bold 22px monospace";
+                g.fillStyle="#ffffff";
+                g.textAlign="center";
+                g.fillText(`${this.hg}  –  ${this.ag}`,W*0.50,cy);
+                // Away (right quarter)
+                g.font="bold 13px monospace";
+                g.fillStyle="#cccccc";
+                g.fillText(short(this.awayTeam).toUpperCase(),W*0.78,cy);
+                // Minute badge (far right)
+                const min=this.matchMinute??0;
+                const ts=`${min}'`;
+                const tx=W-34, tmw=42, tmh=26;
+                g.fillStyle="#0d4d0d";
+                g.beginPath();
+                g.roundRect?g.roundRect(tx-tmw/2,cy-tmh/2,tmw,tmh,5):g.fillRect(tx-tmw/2,cy-tmh/2,tmw,tmh);
+                g.fill();
+                g.font="bold 14px monospace";
+                g.fillStyle="#88ff88";
+                g.textAlign="center";
+                g.fillText(ts,tx,cy+1);
+                g.restore();
             }
 
             _ball(x, y, r) {
