@@ -282,12 +282,14 @@ class Team:
         return {"name": player.name, "price": sell_price}
 
     def toggle_lineup(self, player_id: str) -> None:
+        player = next((p for p in self.squad if p.id == player_id), None)
         if player_id in self.lineup_ids:
+            if player and player.position == "G":
+                raise ValueError("Goalkeeper must always play")
             if len(self.lineup_ids) <= 1:
                 raise ValueError("Must have at least 1 player in lineup")
             self.lineup_ids.remove(player_id)
         else:
-            player = next((p for p in self.squad if p.id == player_id), None)
             if not player:
                 raise ValueError("Player not found")
             if player.injured_weeks > 0:
@@ -299,6 +301,11 @@ class Team:
             raise ValueError("Choose two different players")
         if out_player_id not in self.lineup_ids:
             raise ValueError("Choose a player who is currently playing")
+        outgoing = next((p for p in self.squad if p.id == out_player_id), None)
+        if outgoing and outgoing.position == "G":
+            incoming_chk = next((p for p in self.squad if p.id == in_player_id), None)
+            if not incoming_chk or incoming_chk.position != "G":
+                raise ValueError("Goalkeeper can only be swapped for another goalkeeper")
         if in_player_id in self.lineup_ids:
             raise ValueError("Incoming player is already playing")
         incoming = next((p for p in self.squad if p.id == in_player_id), None)
@@ -315,6 +322,8 @@ class Team:
         player = next((p for p in self.squad if p.id == player_id), None)
         if not player:
             raise ValueError("Player not found")
+        if player.position == "G":
+            raise ValueError("Goalkeeper must always play")
         if role in ("D", "M", "A"):
             player.playing_as = role
             if player.id not in self.lineup_ids:
@@ -338,12 +347,20 @@ class Team:
         player.position = position
 
     def auto_pick_lineup(self) -> None:
-        available = sorted(
-            [p for p in self.squad if p.injured_weeks == 0],
+        # Always include best GK (healthy preferred, injured as fallback)
+        gks = sorted(
+            [p for p in self.squad if p.position == "G"],
+            key=lambda p: (p.injured_weeks == 0, p.skill + p.energy * 0.1),
+            reverse=True,
+        )
+        best_gk = gks[0] if gks else None
+        outfield_slots = LINEUP_SIZE - (1 if best_gk else 0)
+        outfield = sorted(
+            [p for p in self.squad if p.injured_weeks == 0 and p.position != "G"],
             key=lambda p: p.skill + p.energy * 0.1,
             reverse=True,
         )
-        self.lineup_ids = [p.id for p in available[:LINEUP_SIZE]]
+        self.lineup_ids = ([best_gk.id] if best_gk else []) + [p.id for p in outfield[:outfield_slots]]
 
     def advance_retro_round(self) -> list[str]:
         """BASIC lines 6000-6100: energy/injury updates between matches."""
@@ -370,15 +387,28 @@ class Team:
                 if player.id in active_ids and random.randint(1, injury_roll) == injury_roll:
                     player.injured_weeks = 1
                     messages.append(f"{player.name} is injured.")
-        # Remove injured players from lineup, then fill only those vacated spots
+        # GK is mandatory: swap injured GK to healthy backup if one exists, else keep playing injured
+        for gk_id in [pid for pid in self.lineup_ids if self._player_by_id(pid).position == "G"]:
+            if self._player_by_id(gk_id).injured_weeks > 0:
+                backup = next(
+                    (p for p in self.squad if p.position == "G" and p.injured_weeks == 0
+                     and p.id not in set(self.lineup_ids)),
+                    None,
+                )
+                if backup:
+                    self.lineup_ids = [backup.id if pid == gk_id else pid for pid in self.lineup_ids]
+        # Remove injured OUTFIELD players; injured GK always stays
         original_size = len(self.lineup_ids)
-        self.lineup_ids = [pid for pid in self.lineup_ids
-                           if self._player_by_id(pid).injured_weeks == 0]
+        self.lineup_ids = [
+            pid for pid in self.lineup_ids
+            if self._player_by_id(pid).injured_weeks == 0 or self._player_by_id(pid).position == "G"
+        ]
         injured_count = original_size - len(self.lineup_ids)
         if injured_count > 0:
             already_in = set(self.lineup_ids)
             candidates = sorted(
-                [p for p in self.squad if p.injured_weeks == 0 and p.id not in already_in],
+                [p for p in self.squad if p.injured_weeks == 0 and p.id not in already_in
+                 and p.position != "G"],
                 key=lambda p: p.skill + p.energy * 0.1,
                 reverse=True,
             )

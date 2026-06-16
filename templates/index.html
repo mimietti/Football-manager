@@ -400,23 +400,10 @@
                 await delay(1200);
                 const aiCol = viz.aiColor;
 
-                const shirtSvg = (fill, stroke) =>
-                    `<svg class="shirt-icon" viewBox="0 0 24 24" width="22" height="22"><path d="M8,2 Q12,6 16,2 L22,7 L17,9 L17,22 L7,22 L7,9 L2,7 Z" fill="${fill}" stroke="${stroke}" stroke-width="1.2"/></svg>`;
-                const humanShirt = shirtSvg("#ffffff", "#555555");
-                const aiShirt    = shirtSvg(aiCol, aiCol === "#111111" ? "#555555" : "rgba(0,0,0,0.35)");
-                const homeShirt  = humanIsHome ? humanShirt : aiShirt;
-                const awayShirt  = humanIsHome ? aiShirt    : humanShirt;
-
-                // Live score display below canvas — stays visible while commentary scrolls
+                // Score is shown in the canvas scoreboard; clear the visual-score bar
                 const vsEl = document.getElementById("visualScore");
-                const updateVsEl = (h, a) => {
-                    if (!vsEl) return;
-                    vsEl.innerHTML =
-                        `<span class="score-team">${homeShirt}${esc(m.home)}</span>` +
-                        `<span class="score-result">${h} – ${a}</span>` +
-                        `<span class="score-team score-right">${esc(m.away)}${awayShirt}</span>`;
-                };
-                updateVsEl(0, 0);
+                if (vsEl) vsEl.textContent = "";
+                const updateVsEl = () => {};
 
                 const article = document.createElement("article");
                 article.className = "report";
@@ -457,7 +444,7 @@
                             curHome = parseInt(sg[1]);
                             curAway = parseInt(sg[2]);
                             scoreEl.textContent = `${m.home} ${curHome} – ${curAway} ${m.away}`;
-                            updateVsEl(curHome, curAway);
+
                         }
                         const humanScored = humanIsHome ? curHome > prevHome : curAway > prevAway;
                         lastHumanAttacking = humanScored;
@@ -677,7 +664,7 @@
                     this.dribbleActive = false;
                     this.kickTick = 30;
                     this.passTarget = {
-                        px: humanAttacking ? 0.86+Math.random()*0.06 : 0.14-Math.random()*0.06,
+                        px: humanAttacking ? 0.88+Math.random()*0.05 : 0.12-Math.random()*0.05,
                         py: 0.38+Math.random()*0.24
                     };
                     this.dribbleTarget = { px: this.bpx, py: this.bpy };
@@ -968,7 +955,7 @@
                 // Corner kick: cluster outfield players in penalty area
                 if(this.attackVariant===3&&(this.kickTick>0||this.shotActive)){
                     const hAtt=this._vs==="attack-human";
-                    const boxX=hAtt?0.83:0.17;
+                    const boxX=hAtt?0.89:0.11;
                     const boxYs=[0.40,0.46,0.53,0.59,0.44,0.50,0.56,0.42,0.48];
                     const kickerIdx=hAtt?this._humanAttIdx:this._aiAttIdx;
                     let bi=0;
@@ -983,7 +970,7 @@
                     let di=0;
                     for(const p of this.fmPl){
                         if(!p.isGK&&p.human!==hAtt){
-                            p.tpx=(hAtt?0.88:0.12)+(di%3)*0.03*(hAtt?1:-1);
+                            p.tpx=(hAtt?0.92:0.08)+(di%3)*0.03*(hAtt?1:-1);
                             p.tpy=0.37+(di%6)*0.05;
                             di++;
                         }
@@ -1393,13 +1380,16 @@
                 g.beginPath(); g.moveTo(tl.x,tl.y); g.lineTo(tr.x,tr.y);
                 g.lineTo(br.x,br.y); g.lineTo(bl.x,bl.y); g.closePath(); g.stroke();
                 this._lp([[.5,0],[.5,1]]);
-                this._ell(.5,.5,.10,.20);
-                this._lp([[0,.18],[.25,.18],[.25,.82],[0,.82],[0,.18]]);
-                this._lp([[0,.32],[.12,.32],[.12,.68],[0,.68],[0,.32]]);
-                this._lp([[1,.18],[.75,.18],[.75,.82],[1,.82],[1,.18]]);
-                this._lp([[1,.32],[.88,.32],[.88,.68],[1,.68],[1,.32]]);
-                this._parc(.75,.5,.09,.15,Math.PI*.58,Math.PI*1.42);
-                this._parc(.25,.5,.09,.15,-Math.PI*.42,Math.PI*.42);
+                this._ell(.5,.5,.087,.135);
+                // Penalty areas (16.5m of 105m = 0.157), width 40.32m of 68m (y=0.204–0.796)
+                this._lp([[0,.204],[.157,.204],[.157,.796],[0,.796],[0,.204]]);
+                // 6-yard boxes (5.5m = 0.052), width 18.32m of 68m (y=0.366–0.634)
+                this._lp([[0,.366],[.052,.366],[.052,.634],[0,.634],[0,.366]]);
+                this._lp([[1,.204],[.843,.204],[.843,.796],[1,.796],[1,.204]]);
+                this._lp([[1,.366],[.948,.366],[.948,.634],[1,.634],[1,.366]]);
+                // D arcs: R9.15m centred on penalty spot (11m = 0.105), only outside penalty area
+                this._parc(.895,.5,.087,.135,Math.PI*.704,Math.PI*1.296);
+                this._parc(.105,.5,.087,.135,-Math.PI*.296,Math.PI*.296);
                 this._drawGoal(true); this._drawGoal(false);
                 this._shotArc();
                 this._passLine();

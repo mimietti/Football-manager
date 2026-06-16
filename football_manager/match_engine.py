@@ -242,7 +242,7 @@ def _simulate_retro_match(
             g_raw = _scoring_attempt() + _scoring_attempt()
             report.append(_retro_pressure_line(ai_team.name, factor))
             if g_raw > 0 and human_gk:
-                sp = _gk_save_prob(human_gk.skill_g, ai_att_est)
+                sp = _gk_save_prob(0 if human_gk.injured_weeks > 0 else human_gk.skill_g, ai_att_est)
                 g = sum(1 for _ in range(g_raw) if random.random() > sp)
                 saved = g_raw - g
                 if saved:
@@ -266,7 +266,7 @@ def _simulate_retro_match(
             player_goals += 1
             record_goal(human_team.name)
         late_ai_goals = 0
-        if late_ai_raw and human_gk and random.random() < _gk_save_prob(human_gk.skill_g, ai_att_est):
+        if late_ai_raw and human_gk and random.random() < _gk_save_prob(0 if human_gk.injured_weeks > 0 else human_gk.skill_g, ai_att_est):
             report.append(f"{human_gk.name} denies them at the death!")
         elif late_ai_raw:
             late_ai_goals = 1
@@ -405,7 +405,7 @@ def _simulate_modern_match(
             gp = _goal_prob(u[4], a[2], u[0], a[0], u[1], a[1])
             if random.random() < gp:
                 # Check GK save: shooter att_est vs GK skill_g
-                if human_gk and random.random() < _gk_save_prob(human_gk.skill_g, ai_att_est):
+                if human_gk and random.random() < _gk_save_prob(0 if human_gk.injured_weeks > 0 else human_gk.skill_g, ai_att_est):
                     report.append(f"{human_gk.name} saves it!")
                     events.append(MatchEvent("save", human_gk.name, human_team.name, home_score, away_score))
                 else:
