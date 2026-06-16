@@ -1291,38 +1291,39 @@
             _drawScoreboard() {
                 if(!this.homeTeam) return;
                 const {g,W}=this;
-                const mh=46, th=22; // main row + time row
+                const mh=50, th=30; // main row + time row
                 g.save();
-                // Teal background
                 g.fillStyle="#009b80";
                 g.fillRect(0,0,W,mh);
-                g.fillStyle="#007060";
+                const goalActive=this.goalTick>0;
+                g.fillStyle=goalActive?"#bb1111":"#007060";
                 g.fillRect(0,mh,W,th);
-                const cy=mh/2;
+                const cy=mh/2, cx=W/2;
                 g.textBaseline="middle";
                 const short=(n)=>n.length>12?n.substring(0,11)+"…":n;
-                // Team names
-                g.font="bold 14px sans-serif";
+                g.font="bold 15px sans-serif";
                 g.fillStyle="#ffffff";
                 g.textAlign="center";
                 g.fillText(short(this.homeTeam).toUpperCase(),W*0.22,cy);
                 g.fillText(short(this.awayTeam).toUpperCase(),W*0.78,cy);
-                // Score boxes (white bg, dark text)
-                const bw=42,bh2=36,gap=8,cx=W/2;
+                const bw=44,bh2=38,gap=8;
                 g.fillStyle="#ffffff";
                 g.fillRect(cx-bw-gap/2,cy-bh2/2,bw,bh2);
                 g.fillRect(cx+gap/2,cy-bh2/2,bw,bh2);
-                g.font="bold 22px monospace";
+                g.font="bold 24px monospace";
                 g.fillStyle="#111111";
                 g.fillText(String(this.hg),cx-bw/2-gap/2,cy+1);
                 g.fillText(String(this.ag),cx+bw/2+gap/2,cy+1);
-                // Time in sub-row
                 const min=this.matchMinute??0;
-                const ts=`${min}:00`;
-                g.font="bold 13px monospace";
-                g.fillStyle="#ccffee";
-                g.textAlign="center";
-                g.fillText(ts,cx,mh+th/2);
+                const rowCy=mh+th/2;
+                g.textAlign="center"; g.textBaseline="middle";
+                if(goalActive){
+                    g.font="bold 17px monospace"; g.fillStyle="#f7f15b";
+                    g.fillText(`GOAL!  ${min}'`,cx,rowCy);
+                } else {
+                    g.font="bold 18px monospace"; g.fillStyle="#ccffee";
+                    g.fillText(`${min}'`,cx,rowCy);
+                }
                 g.restore();
             }
 
@@ -1376,36 +1377,7 @@
             }
 
             _drawBanner() {
-                const {g,W,H}=this;
-                const sbH=68; // scoreboard height — banner stays below it
-                const pitchCy=sbH+(H-sbH)/2;
-                g.save();
-                if(this.goalTick>0){
-                    const bw=Math.min(W*0.68,520), bh=84;
-                    const bx=W/2-bw/2, by=pitchCy-bh/2;
-                    g.fillStyle="#bb1111";
-                    g.fillRect(bx,by,bw,bh);
-                    g.fillStyle="#f7f15b";
-                    g.fillRect(bx+bw*0.08,by,bw*0.84,bh);
-                    g.font=`bold ${Math.round(bh*0.64)}px monospace`;
-                    g.fillStyle="#bb1111";
-                    g.textAlign="center";
-                    g.textBaseline="middle";
-                    g.fillText("GOAL!",W/2,pitchCy+2);
-                } else if(this.bannTick>0){
-                    const text=this.bannType==="nogoal"?"NO GOAL!":"SAVED!";
-                    const bw=Math.min(W*0.46,360), bh=56;
-                    g.fillStyle="rgba(0,0,0,0.85)";
-                    g.fillRect(W/2-bw/2,pitchCy-bh/2,bw,bh);
-                    g.strokeStyle="#555555"; g.lineWidth=3;
-                    g.strokeRect(W/2-bw/2,pitchCy-bh/2,bw,bh);
-                    g.font=`bold ${Math.round(bh*0.52)}px monospace`;
-                    g.fillStyle="#ffffff";
-                    g.textAlign="center";
-                    g.textBaseline="middle";
-                    g.fillText(text,W/2,pitchCy+1);
-                }
-                g.restore();
+                // Banners removed — goal shown in scoreboard sub-row
             }
 
             _updateOverlay() {
