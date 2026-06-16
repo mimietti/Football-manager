@@ -80,6 +80,25 @@ def simulate_match(
     return _simulate_retro_match(home, away, tactics, **kwargs)
 
 
+# ── GK helpers ───────────────────────────────────────────────────────────────
+
+def _active_gk(team: Team):
+    """Return the first active GK in the lineup, or None."""
+    return next((p for p in team.active_players if p.position == "G"), None)
+
+
+def _gk_save_prob(gk_skill_g: int, att_skill_a: int) -> float:
+    """
+    Probability that a GK (skill_g) saves a shot from an attacker (skill_a).
+    Both are 1–5. Neutral at equal skills (~20%), up to ~40% for elite GK
+    vs weak attacker, down to ~5% for weak GK vs elite attacker.
+    """
+    if gk_skill_g <= 0:
+        return 0.0
+    diff = gk_skill_g - att_skill_a        # −4 to +4
+    return max(0.05, min(0.40, 0.20 + diff * 0.05))
+
+
 # ── Shared attribute helpers ─────────────────────────────────────────────────
 
 def _retro_player_attrs(team: Team) -> list[int]:
@@ -178,6 +197,15 @@ def _simulate_retro_match(
         cup_round, player_div_index, opp_div_index,
     )
 
+    human_gk = _active_gk(human_team)
+    # Estimate AI attacker skill from their attack factor (1-20 → 1-5 per player, ~3 attackers)
+    ai_att_est = max(1, min(5, u[4] // 3))
+    # Best human attacker's skill_a (for human attack, AI has no GK model)
+    human_att_est = max(
+        (p.skill_a for p in human_team.active_players if p.position == "A"),
+        default=3,
+    )
+
     player_goals = 0
     ai_goals = 0
     home_score = 0
@@ -211,9 +239,17 @@ def _simulate_retro_match(
 
         if random.randint(1, 100) + (ua - pa) * 5 >= 75:
             had_chance = True
-            g = _scoring_attempt() + _scoring_attempt()
-            ai_goals += g
+            g_raw = _scoring_attempt() + _scoring_attempt()
             report.append(_retro_pressure_line(ai_team.name, factor))
+            if g_raw > 0 and human_gk:
+                sp = _gk_save_prob(human_gk.skill_g, ai_att_est)
+                g = sum(1 for _ in range(g_raw) if random.random() > sp)
+                saved = g_raw - g
+                if saved:
+                    report.append(f"{human_gk.name} pulls off {'a save' if saved == 1 else str(saved) + ' saves'}!")
+            else:
+                g = g_raw
+            ai_goals += g
             if g:
                 for _ in range(g):
                     record_goal(ai_team.name)
@@ -223,13 +259,17 @@ def _simulate_retro_match(
     if not had_chance:
         report.append("A tight first half gives both sides little room to play.")
         late_player_goals = _scoring_attempt()
-        late_ai_goals = _scoring_attempt()
-        if late_player_goals or late_ai_goals:
+        late_ai_raw = _scoring_attempt()
+        if late_player_goals or late_ai_raw:
             report.append("The game finally opens up late on.")
         for _ in range(late_player_goals):
             player_goals += 1
             record_goal(human_team.name)
-        for _ in range(late_ai_goals):
+        late_ai_goals = 0
+        if late_ai_raw and human_gk and random.random() < _gk_save_prob(human_gk.skill_g, ai_att_est):
+            report.append(f"{human_gk.name} denies them at the death!")
+        elif late_ai_raw:
+            late_ai_goals = 1
             ai_goals += 1
             record_goal(ai_team.name)
         if not late_player_goals and not late_ai_goals:
@@ -329,10 +369,14 @@ def _simulate_modern_match(
     }
 
     active = human_team.active_players
+    human_gk = _active_gk(human_team)
+    ai_att_est = max(1, min(5, u[4] // 3))
 
     # ── Human team attacks ───────────────────────────────────────────────────
     for _ in range(human_attacks):
-        shooter = _pick_player_weighted(active, "attacker")
+        shooter = _pick_player_weighted(
+            [p for p in active if p.position != "G"], "attacker"
+        )
         if random.random() > _on_target_prob(shooter):
             name = shooter.name if shooter else human_team.name
             report.append(f"{name} shoots wide.")
@@ -360,13 +404,20 @@ def _simulate_modern_match(
         else:
             gp = _goal_prob(u[4], a[2], u[0], a[0], u[1], a[1])
             if random.random() < gp:
-                if human_is_home:
-                    away_score += 1
+                # Check GK save: shooter att_est vs GK skill_g
+                if human_gk and random.random() < _gk_save_prob(human_gk.skill_g, ai_att_est):
+                    report.append(f"{human_gk.name} saves it!")
+                    events.append(MatchEvent("save", human_gk.name, human_team.name, home_score, away_score))
                 else:
-                    home_score += 1
-                report.append(f"GOAL — {ai_team.name}! ({home_score}–{away_score})")
+                    if human_is_home:
+                        away_score += 1
+                    else:
+                        home_score += 1
+                    report.append(f"GOAL — {ai_team.name}! ({home_score}–{away_score})")
             else:
-                interceptor = _pick_player_weighted(active, "defender")
+                interceptor = _pick_player_weighted(
+                    [p for p in active if p.position != "G"], "defender"
+                )
                 if interceptor:
                     report.append(
                         f"{interceptor.name} intercepts {ai_team.name}'s attack."

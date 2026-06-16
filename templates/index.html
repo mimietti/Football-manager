@@ -390,11 +390,12 @@
                 const viz = ensureViz();
                 viz.reset(m.home, m.away);
                 const humanSq = (state.human_teams || [])[0]?.squad || [];
+                const hGK = humanSq.filter(p => p.active && p.position === "G").length;
                 const hD = humanSq.filter(p => p.active && (p.playing_as || p.position) === "D").length;
                 const hM = humanSq.filter(p => p.active && (p.playing_as || p.position) === "M").length;
                 const hA = humanSq.filter(p => p.active && (p.playing_as || p.position) === "A").length;
                 viz.setHumanFormation(hD, hA);
-                viz.setFullFormation(hD, hM, hA);
+                viz.setFullFormation(hD + hGK, hM, hA);
                 await delay(1200);
                 const aiCol = viz.aiColor;
 
@@ -1546,19 +1547,28 @@
                 lineupBadge.className = `lineup-badge ${human.lineup_size === 11 ? "lineup-ok" : "lineup-bad"}`;
                 renderTeamSummary(human);
                 const sortedSquad = [...(human.squad || [])].sort((a, b) => {
-                    const order = { D: 0, M: 1, A: 2 };
+                    const order = { G: 0, D: 1, M: 2, A: 3 };
                     const posDiff = (order[a.position] ?? 9) - (order[b.position] ?? 9);
                     if (posDiff !== 0) return posDiff;
                     if (a.active !== b.active) return a.active ? -1 : 1;
                     return String(a.name).localeCompare(String(b.name));
                 });
                 const groups = [
+                    ["G", "Goalkeeper"],
                     ["D", "Defenders"],
                     ["M", "Midfielders"],
                     ["A", "Attackers"],
                 ];
                 document.getElementById("squadList").innerHTML =
-                    groups.map(([pos, label]) => `
+                    groups.map(([pos, label]) => {
+                        const rows = sortedSquad
+                            .filter(p => p.position === pos)
+                            .sort((a, b) => {
+                                if (a.active !== b.active) return a.active ? -1 : 1;
+                                return String(a.name).localeCompare(String(b.name));
+                            });
+                        if (rows.length === 0) return "";
+                        return `
                         <section class="squad-column">
                             <h3>${label}</h3>
                             <div class="squad-table-head">
@@ -1570,22 +1580,10 @@
                                 <span class="col-status">Lineup</span>
                             </div>
                             <div class="player-list">
-                                ${(() => {
-                                    const rows = sortedSquad
-                                        .filter(p => (p.playing_as || p.position) === pos)
-                                        .sort((a, b) => {
-                                            if (a.active !== b.active) return a.active ? -1 : 1;
-                                            return String(a.name).localeCompare(String(b.name));
-                                        });
-                                    // First active D is the goalkeeper
-                                    const gkId = pos === "D"
-                                        ? (rows.find(p => p.active)?.id ?? null)
-                                        : null;
-                                    return rows.map(p => playerRow(p, human.name, true, p.id === gkId)).join("");
-                                })()}
+                                ${rows.map(p => playerRow(p, human.name, true, p.position === "G")).join("")}
                             </div>
-                        </section>
-                    `).join("");
+                        </section>`;
+                    }).join("");
             }
 
             // Transfer market — only visible after a match
@@ -1698,13 +1696,13 @@
             const d = (squad || []).filter(p => p.active && ep(p) === "D").length;
             const m = (squad || []).filter(p => p.active && ep(p) === "M").length;
             const a = (squad || []).filter(p => p.active && ep(p) === "A").length;
-            // GK is taken from first active D (or M if no D) — subtract from display
-            const gkD = d > 0 ? 1 : 0;
-            const gkM = d === 0 && m > 0 ? 1 : 0;
-            return `${d - gkD}-${m - gkM}-${a}`;
+            return `${d}-${m}-${a}`;
         }
 
         function skillProfile(player) {
+            if (player.position === "G") {
+                return `G${player.skill_g ?? player.skill} M${player.skill_m ?? 1} D${player.skill_d ?? 1}`;
+            }
             if (player.skill_d || player.skill_m || player.skill_a) {
                 return `D${player.skill_d} M${player.skill_m} A${player.skill_a}`;
             }
@@ -1736,8 +1734,8 @@
                     statusLabel = "Sell";
                     statusClass = player.injured || state?.transfer_sold_this_window ? "status-disabled" : "status-action";
                     statusContent = esc(statusLabel);
-                } else if (!player.injured) {
-                    // Role picker popup
+                } else if (!player.injured && player.position !== "G") {
+                    // Role picker popup (not for GK — they toggle in/out via lineup)
                     statusAttrs = ` data-cycle-role="${esc(player.id)}" data-team="${esc(teamName)}"`;
                     if (pendingRolePlayer === player.id) {
                         const curRole = player.active ? (player.playing_as || player.position) : "Bench";

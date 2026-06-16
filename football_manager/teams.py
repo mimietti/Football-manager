@@ -85,6 +85,7 @@ class Player:
     skill_d: int = 0
     skill_m: int = 0
     skill_a: int = 0
+    skill_g: int = 0  # goalkeeping skill; >0 only for position="G"
     morale_delta: int = 0
     playing_as: str = ""  # overrides position for lineup role; "" = use natural position
 
@@ -93,6 +94,8 @@ class Player:
         if 'skill_d' not in self.__dict__:
             sd, sm, sa = _position_skills(self.position, self.skill)
             self.skill_d, self.skill_m, self.skill_a = sd, sm, sa
+        if 'skill_g' not in self.__dict__:
+            self.skill_g = 0
         if 'morale_delta' not in self.__dict__:
             self.morale_delta = 0
         if 'playing_as' not in self.__dict__:
@@ -525,19 +528,50 @@ def create_retro_all_players(d2: int) -> list[Player]:
     return [create_retro_player(i, d2) for i in range(24)]
 
 
+def _create_retro_gk(d2: int, weak: bool = False) -> Player:
+    """Create a goalkeeper for the human team. weak=True for the reserve."""
+    skill_g = 3 if weak else random.randint(4, 5)
+    skill_m = 1 if weak else random.randint(1, 2)
+    skill_d = 1 if weak else random.randint(1, 2)
+    energy = random.randint(1, 20)
+    morale = random.randint(7, 13)
+    value = 5000 * d2 * skill_g
+    name = f"{random.choice(FIRST_NAMES)[0]}.{random.choice(LAST_NAMES)}"
+    return Player(
+        id=f"gk-{random.randint(100000, 999999)}",
+        name=name,
+        position="G",
+        skill=skill_g,
+        energy=energy,
+        morale=morale,
+        value=value,
+        skill_g=skill_g,
+        skill_d=skill_d,
+        skill_m=skill_m,
+        skill_a=1,
+    )
+
+
 def create_retro_human_team(manager_name: str, team_name: str, division: int = 4) -> Team:
     """
     BASIC lines 8970-8987: pick 12 random players from the 24 to start with.
     11 are picked (p=2), 1 is available (p=1), remaining 12 stay unsigned (p=0).
+    Two goalkeepers (G) are added on top: one starts in lineup, one on bench.
     """
     d2 = retro_div_multiplier(division)
     all_players = create_retro_all_players(d2)
 
     indices = random.sample(range(24), 12)
-    squad = [all_players[i] for i in indices]       # 12 in squad
-    lineup_ids = [all_players[i].id for i in indices[:11]]  # 11 picked
+    outfield = [all_players[i] for i in indices]       # 12 outfield in squad
+    outfield_lineup = [all_players[i].id for i in indices[:10]]  # 10 start
 
-    # Transfer market: the other 12 unsigned players
+    gk_normal = _create_retro_gk(d2, weak=False)
+    gk_weak = _create_retro_gk(d2, weak=True)
+
+    squad = [gk_normal, gk_weak] + outfield
+    lineup_ids = [gk_normal.id] + outfield_lineup   # GK + 10 outfield = 11
+
+    # Transfer market: the other 12 unsigned outfield players
     transfer = [all_players[i] for i in range(24) if i not in indices]
 
     return (
