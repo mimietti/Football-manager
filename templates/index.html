@@ -940,6 +940,16 @@
                             const wallFm=wi>=0?this.fmPl[wi]:null;
                             if(wallFm){wallFm.tpx=this.passTarget.px;wallFm.tpy=this.passTarget.py;}
                         }
+                    } else if(this.shotActive&&this.shotStart){
+                        // Shooter stays at kick origin while ball is in flight
+                        const fi=humanAtt?this._humanAttIdx:this._aiAttIdx;
+                        const carrier=fi>=0?this.fmPl[fi]:null;
+                        if(carrier){carrier.tpx=this.shotStart.px;carrier.tpy=this.shotStart.py;}
+                        if(this.passPlanned&&this.shooterIdx!==this.dribblerIdx){
+                            const si=humanAtt?this._humanSupportIdx:this._aiSupportIdx;
+                            const support=si>=0?this.fmPl[si]:null;
+                            if(support){support.tpx=this.shotStart.px;support.tpy=this.shotStart.py;}
+                        }
                     }
                     // Human defenders drop back when AI attacks
                     if(!humanAtt){
