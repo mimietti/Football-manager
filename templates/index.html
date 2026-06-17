@@ -1697,10 +1697,10 @@
                     g.font="bold 16px monospace"; g.fillStyle="#999999";
                     g.fillText(`${min}'`,cx,rowCy);
                 }
-                if(this.dribbleActive){
+                if(this._vs){
                     const vNames=["dribble","dribble","dribble","corner","wall-pass","cross","free-kick","penalty"];
                     const lbl=`v${this.attackVariant} ${vNames[this.attackVariant]||""}`;
-                    g.font="10px monospace"; g.fillStyle="#ff0"; g.textAlign="right";
+                    g.font="bold 13px monospace"; g.fillStyle="#ffff00"; g.textAlign="right";
                     g.fillText(lbl, W-6, rowCy);
                 }
                 g.restore();
