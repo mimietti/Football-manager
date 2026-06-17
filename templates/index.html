@@ -527,7 +527,7 @@
                     // Wait
                     if(!isFinal && !isHighlight) {
                         await viz.waitForAnim();
-                        await delay(350);
+                        await delay(1500);
                     }
                 }
 
@@ -1700,8 +1700,8 @@
                 if(this._vs){
                     const vNames=["dribble","dribble","dribble","corner","wall-pass","cross","free-kick","penalty"];
                     const lbl=`v${this.attackVariant} ${vNames[this.attackVariant]||""}`;
-                    g.font="bold 13px monospace"; g.fillStyle="#ffff00"; g.textAlign="right";
-                    g.fillText(lbl, W-6, rowCy);
+                    g.font="bold 22px monospace"; g.fillStyle="#ffff00"; g.textAlign="right";
+                    g.fillText(lbl, W-8, rowCy);
                 }
                 g.restore();
             }
