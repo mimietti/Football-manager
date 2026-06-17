@@ -207,19 +207,33 @@ class Team:
             raise ValueError("Player not found")
         if player.injured_weeks > 0:
             raise ValueError("Nobody wants an injured player!")
+        if player.position == "G" and player_id in self.lineup_ids:
+            backup_gk = next(
+                (p for p in self.squad if p.position == "G" and p.id != player_id and p.injured_weeks == 0),
+                None,
+            )
+            if not backup_gk:
+                raise ValueError("Cannot sell: no healthy backup goalkeeper available")
         sell_price = int(((random.random() * 5 + 8) * player.value) / 10)
         self.cash += sell_price
         was_in_lineup = player_id in self.lineup_ids
         self.squad = [p for p in self.squad if p.id != player_id]
         self.lineup_ids = [pid for pid in self.lineup_ids if pid != player_id]
         if was_in_lineup:
-            # Fill only the one vacated slot from available bench players
+            # Fill only the one vacated slot; prefer same-position replacement for GK
             already_in = set(self.lineup_ids)
-            candidates = sorted(
-                [p for p in self.squad if p.injured_weeks == 0 and p.id not in already_in],
-                key=lambda p: p.skill + p.energy * 0.1,
-                reverse=True,
-            )
+            if player.position == "G":
+                candidates = sorted(
+                    [p for p in self.squad if p.position == "G" and p.injured_weeks == 0 and p.id not in already_in],
+                    key=lambda p: p.skill + p.energy * 0.1,
+                    reverse=True,
+                )
+            else:
+                candidates = sorted(
+                    [p for p in self.squad if p.injured_weeks == 0 and p.id not in already_in and p.position != "G"],
+                    key=lambda p: p.skill + p.energy * 0.1,
+                    reverse=True,
+                )
             if candidates:
                 self.lineup_ids.append(candidates[0].id)
         return player
@@ -255,11 +269,11 @@ class Team:
         return {"wages": wages, "rent": rent, "interest": interest, "total": total}
 
     def force_sell_cheapest(self) -> dict | None:
-        """Sell lowest-skill non-injured player when loan is maxed out."""
+        """Sell lowest-skill non-injured outfield player when loan is maxed out."""
         if len(self.squad) <= LINEUP_SIZE:
             return None
         candidates = sorted(
-            [p for p in self.squad if p.injured_weeks == 0],
+            [p for p in self.squad if p.injured_weeks == 0 and p.position != "G"],
             key=lambda p: (p.skill, p.value),
         )
         if not candidates:
@@ -273,7 +287,7 @@ class Team:
         if was_in_lineup:
             already_in = set(self.lineup_ids)
             bench = sorted(
-                [p for p in self.squad if p.injured_weeks == 0 and p.id not in already_in],
+                [p for p in self.squad if p.injured_weeks == 0 and p.id not in already_in and p.position != "G"],
                 key=lambda p: p.skill + p.energy * 0.1,
                 reverse=True,
             )
@@ -414,6 +428,17 @@ class Team:
             )
             for p in candidates[:injured_count]:
                 self.lineup_ids.append(p.id)
+        # Safety net: always keep a GK in the lineup
+        lineup_set = set(self.lineup_ids)
+        has_gk = any(self._player_by_id(pid).position == "G" for pid in self.lineup_ids)
+        if not has_gk:
+            best_gk = max(
+                (p for p in self.squad if p.position == "G" and p.id not in lineup_set),
+                key=lambda p: (p.injured_weeks == 0, p.skill),
+                default=None,
+            )
+            if best_gk:
+                self.lineup_ids.append(best_gk.id)
         return messages
 
     def apply_match_result(self, won: bool, drew: bool) -> None:
