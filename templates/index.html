@@ -1135,32 +1135,36 @@
                 if(this.attackVariant===3&&(this.kickTick>0||this.shotActive)){
                     const hAtt=this._vs==="attack-human"; // direction
                     const hTA=this._humanTeamAttacking;   // actual team
-                    const boxX=hAtt?0.87:0.13;
-                    const boxYs=[0.40,0.47,0.54,0.60,0.44,0.51,0.57];
+                    const sign=hAtt?1:-1;
+                    const boxNear=hAtt?0.89:0.11; // near post x
                     const kickerIdx=hTA?this._humanAttIdx:this._aiAttIdx;
-                    // Attacking team: defenders stay back as counter-cover; mids+fwds fill box
+                    // Attacking mids+fwds: spread organically across the box using per-player jitter
+                    const attBoxYs=[0.38,0.44,0.50,0.56,0.62,0.41,0.47,0.53,0.59];
                     let boxI=0, covI=0;
                     for(let pi=0;pi<this.fmPl.length;pi++){
                         const p=this.fmPl[pi];
                         if(!p.isGK&&p.human===hTA&&pi!==kickerIdx){
                             if(p.role==='D'){
-                                // Stay in midfield to cover break
-                                p.tpx=hAtt?0.44+covI*0.06:0.56-covI*0.06;
-                                p.tpy=0.32+covI*0.18;
+                                // Defenders hold midfield against counter
+                                p.tpx=hAtt?0.46+covI*0.07:0.54-covI*0.07;
+                                p.tpy=0.30+covI*0.20+(p.jy||0)*0.5;
                                 covI++;
                             } else {
-                                p.tpx=boxX-(boxI%3)*0.04*(hAtt?1:-1);
-                                p.tpy=boxYs[boxI%boxYs.length];
+                                // Spread irregularly using jitter to break grid look
+                                const bx=boxNear-(boxI*0.055+0.02)*sign;
+                                p.tpx=Math.max(0.06,Math.min(0.94,bx+(p.jx||0)*0.6));
+                                p.tpy=Math.max(0.30,Math.min(0.70,attBoxYs[boxI%attBoxYs.length]+(p.jy||0)*0.5));
                                 boxI++;
                             }
                         }
                     }
-                    // Defending team: pack the box
+                    // Defending team: face the cross in a less rigid spread
                     let di=0;
                     for(const p of this.fmPl){
                         if(!p.isGK&&p.human!==hTA){
-                            p.tpx=(hAtt?0.91:0.09)+(di%3)*0.025*(hAtt?1:-1);
-                            p.tpy=0.35+(di%7)*0.05;
+                            const dx=boxNear-(di*0.04+0.01)*sign;
+                            p.tpx=Math.max(0.06,Math.min(0.94,dx+(p.jx||0)*0.5));
+                            p.tpy=Math.max(0.28,Math.min(0.72,0.36+(di%8)*0.048+(p.jy||0)*0.4));
                             di++;
                         }
                     }
