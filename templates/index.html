@@ -1033,7 +1033,7 @@
                             :_cl(this.bpx-0.09,0.12,0.70);
                         const defFm=this.fmPl
                             .filter(p=>!p.isGK&&p.human!==hTA)
-                            .sort((a,b)=>Math.hypot(a.px-this.bpx,a.py-this.bpy)-Math.hypot(b.px-this.bpx,b.py-this.bpy));
+                            .sort((a,b)=>humanAtt?b.fpx-a.fpx:a.fpx-b.fpx);
                         defFm.slice(0,2).forEach((p,i)=>{
                             p.tpx=intX;
                             p.tpy=_cl(this.bpy+(i===0?0.07:-0.07),0.25,0.75);
