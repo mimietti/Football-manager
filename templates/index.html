@@ -422,109 +422,96 @@
                 const eventMinutes = timedReportEvents(m.report);
                 let eventIndex = 0;
 
-                // Pre-select which non-goal animated events to show (random 2 per match)
+                // Pre-select 2 non-goal events to animate and show; everything else is silent
                 const _nonGoalIdxs = [];
                 m.report.forEach((ln, i) => {
                     const l = String(ln ?? "");
-                    if(isFinanceLine(l)||isBoringLine(l)||l.startsWith("GOAL")||l.startsWith("Final score:")||l.startsWith("Highlights:")) return;
-                    const isAnim = l.includes(" shoots wide")||l.includes(" shoot wide")||l.includes(" is saved")||
+                    if(isFinanceLine(l)||isBoringLine(l)) return;
+                    const isNonGoalResult =
+                        l.includes(" shoots wide")||l.includes(" shoot wide")||l.includes(" is saved")||
                         l.includes(" intercepts")||l.includes("runs through")||l.includes("goes wide")||
                         l.includes("over the bar")||l.includes("is blocked")||l.includes("keeper is equal")||
                         l.includes("is cleared")||l.includes("saves it!")||l.includes("pulls off")||l.includes("denies");
-                    if(isAnim) _nonGoalIdxs.push(i);
+                    if(isNonGoalResult) _nonGoalIdxs.push(i);
                 });
                 const _animNonGoal = new Set(_nonGoalIdxs.sort(()=>Math.random()-0.5).slice(0,2));
 
                 for (let _li=0; _li<m.report.length; _li++) {
-                    const line = m.report[_li];
-                    const l = String(line ?? "");
-
+                    const l = String(m.report[_li] ?? "");
                     if (isFinanceLine(l)) { financeLines.push(l); continue; }
                     if (isBoringLine(l)) continue;
+
+                    const isFinal     = l.startsWith("Final score:");
+                    const isGoal      = l.startsWith("GOAL");
+                    const isHighlight = l.startsWith("Highlights:");
+                    const isMiss      = l.includes(" shoots wide") || l.includes(" shoot wide");
+                    const isSaved     = l.includes(" is saved");
+                    const isIntercept = l.includes(" intercepts");
+                    const isRetroWide = l.includes("runs through") || l.includes("goes wide") || l.includes("over the bar");
+                    const isRetroSave = l.includes("is blocked") || l.includes("keeper is equal") ||
+                        l.includes("is cleared") || l.includes("saves it!") ||
+                        l.includes("pulls off") || l.includes("denies");
+                    const isNonGoalResult = isMiss||isSaved||isIntercept||isRetroWide||isRetroSave;
+
+                    // Always update tracking state (direction, half) even for skipped lines
                     const eventMeta = eventMinutes[eventIndex++] || { minute: 45, line: l };
-                    viz.setMatchMinute(eventMeta.minute);
-                    // In the second half formations are x-flipped, so flip attack direction for viz
                     const inSecondHalf = eventMeta.minute > 45;
                     if(inSecondHalf) viz.setSecondHalf();
                     const vizDir = b => inSecondHalf ? !b : b;
+                    if(isMiss) lastHumanAttacking = !!(humanName && l.startsWith(humanName));
+                    else if(isSaved) lastHumanAttacking = humanIsHome ? l.includes(`by ${m.away}`) : l.includes(`by ${m.home}`);
+                    else if(isIntercept) lastHumanAttacking = !(humanName && l.startsWith(humanName));
+                    else if(!isGoal&&!isFinal&&!isHighlight&&!isRetroWide&&!isRetroSave)
+                        lastHumanAttacking = !!(humanName && l.startsWith(humanName));
 
-                    const isFinal  = l.startsWith("Final score:");
-                    const isGoal   = l.startsWith("GOAL");
-                    const isMiss   = l.includes(" shoots wide") || l.includes(" shoot wide");
-                    const isSaved  = l.includes(" is saved");
-                    const isIntercept = l.includes(" intercepts");
+                    // Only display goals, 2 selected non-goal events, final score, highlights
+                    const isSelected = _animNonGoal.has(_li);
+                    if(!isGoal && !isFinal && !isHighlight && !(isNonGoalResult && isSelected)) continue;
+
+                    viz.setMatchMinute(eventMeta.minute);
+
+                    // Score bookkeeping
                     const prevHome = curHome, prevAway = curAway;
-
-                    let needsLongDelay = false;
-
                     if (isGoal) {
                         const sg = l.match(/\((\d+)[–\-](\d+)\)/);
-                        if (sg) {
-                            curHome = parseInt(sg[1]);
-                            curAway = parseInt(sg[2]);
-                            scoreEl.textContent = `${m.home} ${curHome} – ${curAway} ${m.away}`;
-
-                        }
-                        const humanScored = humanIsHome ? curHome > prevHome : curAway > prevAway;
-                        lastHumanAttacking = humanScored;
-                        viz.setScore(curHome, curAway);
-                        viz.goal(vizDir(humanScored));
-                    } else if (isMiss) {
-                        const humanMissed = humanName && l.startsWith(humanName);
-                        lastHumanAttacking = humanMissed;
-                        viz.setState(vizDir(humanMissed) ? "attack-human" : "attack-ai");
-                        if(_animNonGoal.has(_li)) viz.noGoal(vizDir(humanMissed));
-                    } else if (isSaved) {
-                        // "X is saved" → X was the attacker
-                        const humanAttacking = humanIsHome
-                            ? l.includes(`by ${m.away}`)
-                            : l.includes(`by ${m.home}`);
-                        lastHumanAttacking = humanAttacking;
-                        viz.setState(vizDir(humanAttacking) ? "attack-human" : "attack-ai");
-                        if(_animNonGoal.has(_li)) viz.saved(vizDir(humanAttacking));
-                    } else if (isIntercept) {
-                        const humanDefends = humanName && l.startsWith(humanName);
-                        lastHumanAttacking = !humanDefends;
-                        viz.setState(vizDir(!humanDefends) ? "attack-human" : "attack-ai");
-                        if(_animNonGoal.has(_li)) viz.saved(vizDir(!humanDefends));
-                    } else if (isFinal) {
-                        curHome = m.home_goals;
-                        curAway = m.away_goals;
+                        if (sg) { curHome=parseInt(sg[1]); curAway=parseInt(sg[2]); }
                         scoreEl.textContent = `${m.home} ${curHome} – ${curAway} ${m.away}`;
-                        viz.setState("full-time");
-                        viz.clearBanner();
-                        await delay(600);
-                    } else {
-                        // Retro outcome lines (no goal-specific marker but a clear result)
-                        const isRetroWide = l.includes("runs through") || l.includes("goes wide") || l.includes("over the bar");
-                        const isRetroSave = l.includes("is blocked") || l.includes("keeper is equal") ||
-                            l.includes("is cleared") || l.includes("saves it!") ||
-                            l.includes("pulls off") || l.includes("denies");
-                        if (isRetroWide) {
-                            if(_animNonGoal.has(_li)){ needsLongDelay=true; viz.noGoal(vizDir(lastHumanAttacking)); }
-                        } else if (isRetroSave) {
-                            if(_animNonGoal.has(_li)){ needsLongDelay=true; viz.saved(vizDir(lastHumanAttacking)); }
-                        } else {
-                            // Pressure line: detect which team is attacking
-                            const humanAttacking = humanName && l.startsWith(humanName);
-                            lastHumanAttacking = humanAttacking;
-                            viz.setState(vizDir(humanAttacking) ? "attack-human" : "attack-ai");
-                        }
                     }
-
-                    if (l.startsWith("Highlights:")) {
-                        l.replace(/^Highlights:\s*/, "").replace(/\.$/, "").split(", ").forEach(part => {
-                            const sp = part.lastIndexOf(" ");
-                            const name = part.substring(0, sp);
-                            const gn = parseInt(part.substring(sp + 1));
-                            if (!isNaN(gn)) {
-                                if (name === m.home) curHome = gn;
-                                else if (name === m.away) curAway = gn;
-                            }
+                    if (isHighlight) {
+                        l.replace(/^Highlights:\s*/,"").replace(/\.$/,"").split(", ").forEach(part => {
+                            const sp=part.lastIndexOf(" "); const name=part.substring(0,sp); const gn=parseInt(part.substring(sp+1));
+                            if(!isNaN(gn)){ if(name===m.home) curHome=gn; else if(name===m.away) curAway=gn; }
                         });
                         scoreEl.textContent = `${m.home} ${curHome} – ${curAway} ${m.away}`;
                     }
 
+                    // Animate
+                    if (isGoal) {
+                        const humanScored = humanIsHome ? curHome > prevHome : curAway > prevAway;
+                        viz.setScore(curHome, curAway);
+                        viz.goal(vizDir(humanScored));
+                    } else if (isMiss) {
+                        viz.setState(vizDir(lastHumanAttacking) ? "attack-human" : "attack-ai");
+                        viz.noGoal(vizDir(lastHumanAttacking));
+                    } else if (isSaved) {
+                        viz.setState(vizDir(lastHumanAttacking) ? "attack-human" : "attack-ai");
+                        viz.saved(vizDir(lastHumanAttacking));
+                    } else if (isIntercept) {
+                        viz.setState(vizDir(lastHumanAttacking) ? "attack-human" : "attack-ai");
+                        viz.saved(vizDir(lastHumanAttacking));
+                    } else if (isRetroWide) {
+                        viz.noGoal(vizDir(lastHumanAttacking));
+                    } else if (isRetroSave) {
+                        viz.saved(vizDir(lastHumanAttacking));
+                    } else if (isFinal) {
+                        curHome = m.home_goals; curAway = m.away_goals;
+                        scoreEl.textContent = `${m.home} ${curHome} – ${curAway} ${m.away}`;
+                        viz.setState("full-time");
+                        viz.clearBanner();
+                        await delay(600);
+                    }
+
+                    // Show text line
                     const li = document.createElement("li");
                     const cls = reportLineClass(l);
                     if (cls) li.className = cls;
@@ -533,19 +520,14 @@
                     minute.textContent = `${eventMeta.minute}'`;
                     const text = document.createElement("span");
                     text.textContent = l;
-                    li.appendChild(minute);
-                    li.appendChild(text);
+                    li.appendChild(minute); li.appendChild(text);
                     ul.appendChild(li);
                     li.scrollIntoView({ behavior: "smooth", block: "nearest" });
 
-                    if(!isFinal) {
-                        const isAnimated = isGoal || ((isMiss||isSaved||isIntercept||needsLongDelay) && _animNonGoal.has(_li));
-                        if(isAnimated) {
-                            await viz.waitForAnim();
-                            await delay(350);
-                        } else {
-                            await delay(400);
-                        }
+                    // Wait
+                    if(!isFinal && !isHighlight) {
+                        await viz.waitForAnim();
+                        await delay(350);
                     }
                 }
 
