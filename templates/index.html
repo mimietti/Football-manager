@@ -422,7 +422,21 @@
                 const eventMinutes = timedReportEvents(m.report);
                 let eventIndex = 0;
 
-                for (const line of m.report) {
+                // Pre-select which non-goal animated events to show (random 2 per match)
+                const _nonGoalIdxs = [];
+                m.report.forEach((ln, i) => {
+                    const l = String(ln ?? "");
+                    if(isFinanceLine(l)||isBoringLine(l)||l.startsWith("GOAL")||l.startsWith("Final score:")||l.startsWith("Highlights:")) return;
+                    const isAnim = l.includes(" shoots wide")||l.includes(" shoot wide")||l.includes(" is saved")||
+                        l.includes(" intercepts")||l.includes("runs through")||l.includes("goes wide")||
+                        l.includes("over the bar")||l.includes("is blocked")||l.includes("keeper is equal")||
+                        l.includes("is cleared")||l.includes("saves it!")||l.includes("pulls off")||l.includes("denies");
+                    if(isAnim) _nonGoalIdxs.push(i);
+                });
+                const _animNonGoal = new Set(_nonGoalIdxs.sort(()=>Math.random()-0.5).slice(0,2));
+
+                for (let _li=0; _li<m.report.length; _li++) {
+                    const line = m.report[_li];
                     const l = String(line ?? "");
 
                     if (isFinanceLine(l)) { financeLines.push(l); continue; }
@@ -459,7 +473,7 @@
                         const humanMissed = humanName && l.startsWith(humanName);
                         lastHumanAttacking = humanMissed;
                         viz.setState(vizDir(humanMissed) ? "attack-human" : "attack-ai");
-                        viz.noGoal(vizDir(humanMissed));
+                        if(_animNonGoal.has(_li)) viz.noGoal(vizDir(humanMissed));
                     } else if (isSaved) {
                         // "X is saved" → X was the attacker
                         const humanAttacking = humanIsHome
@@ -467,12 +481,12 @@
                             : l.includes(`by ${m.home}`);
                         lastHumanAttacking = humanAttacking;
                         viz.setState(vizDir(humanAttacking) ? "attack-human" : "attack-ai");
-                        viz.saved(vizDir(humanAttacking));
+                        if(_animNonGoal.has(_li)) viz.saved(vizDir(humanAttacking));
                     } else if (isIntercept) {
                         const humanDefends = humanName && l.startsWith(humanName);
                         lastHumanAttacking = !humanDefends;
                         viz.setState(vizDir(!humanDefends) ? "attack-human" : "attack-ai");
-                        viz.saved(vizDir(!humanDefends));
+                        if(_animNonGoal.has(_li)) viz.saved(vizDir(!humanDefends));
                     } else if (isFinal) {
                         curHome = m.home_goals;
                         curAway = m.away_goals;
@@ -487,11 +501,9 @@
                             l.includes("is cleared") || l.includes("saves it!") ||
                             l.includes("pulls off") || l.includes("denies");
                         if (isRetroWide) {
-                            needsLongDelay = true;
-                            viz.noGoal(vizDir(lastHumanAttacking));
+                            if(_animNonGoal.has(_li)){ needsLongDelay=true; viz.noGoal(vizDir(lastHumanAttacking)); }
                         } else if (isRetroSave) {
-                            needsLongDelay = true;
-                            viz.saved(vizDir(lastHumanAttacking));
+                            if(_animNonGoal.has(_li)){ needsLongDelay=true; viz.saved(vizDir(lastHumanAttacking)); }
                         } else {
                             // Pressure line: detect which team is attacking
                             const humanAttacking = humanName && l.startsWith(humanName);
@@ -527,11 +539,12 @@
                     li.scrollIntoView({ behavior: "smooth", block: "nearest" });
 
                     if(!isFinal) {
-                        if(isGoal || isMiss || isSaved || isIntercept || needsLongDelay) {
+                        const isAnimated = isGoal || ((isMiss||isSaved||isIntercept||needsLongDelay) && _animNonGoal.has(_li));
+                        if(isAnimated) {
                             await viz.waitForAnim();
                             await delay(350);
                         } else {
-                            await delay(900);
+                            await delay(400);
                         }
                     }
                 }
@@ -578,12 +591,12 @@
                 this.fmPl=[];
                 this.bpx=.50; this.bpy=.50; this.btpx=.50; this.btpy=.50;
                 this.bannType=null; this.bannTick=0; this.bannHuman=true;
-                this.shotActive=false; this.shotStep=0.004; this.cornerCross=false; this._pending=null;
+                this.shotActive=false; this.shotStep=0.002; this.cornerCross=false; this._pending=null;
                 this.shotStart=null; this.shotTraceTick=0;
                 this.goalDelayTick=0;
                 this.keeperSave=null; this.keeperTick=0;
                 this.dribbleActive=false; this.dribbleTarget=null; this.dribbleStep=0.0009;
-                this.passActive=false; this.passTarget=null; this.passStep=0.003;
+                this.passActive=false; this.passTarget=null; this.passStep=0.0015;
                 this.wallReturnActive=false; this.wallReturnTarget=null;
                 this.dribblerIdx=0; this.shooterIdx=0; this.passPlanned=false;
                 this.kickTick=0; this.kickDuration=18;
@@ -668,7 +681,7 @@
                 this.setState(this._attackVs);
                 this._animComplete=false; this._animResolve=null;
                 this.goalTick=0; this.goalDelayTick=0; this.bannTick=0;
-                this.shotActive=false; this.shotStep=0.004; this.cornerCross=false; this._pending=null;
+                this.shotActive=false; this.shotStep=0.002; this.cornerCross=false; this._pending=null;
                 this.shotStart=null; this.shotTraceTick=0;
                 this.keeperSave=null; this.keeperTick=0;
                 this.kickTick=0;
@@ -1242,7 +1255,7 @@
                             this.shotStart={px:this.bpx, py:this.bpy};
                             this.shotTraceTick=100;
                             this.btpx=this._pendingBtpx; this.btpy=this._pendingBtpy;
-                            this.shotStep=0.007;
+                            this.shotStep=0.0035;
                             this.shotActive=true;
                         } else if(this._fkWallHit) {
                             // Free kick hit the wall — ball deflects, result is miss
@@ -1255,7 +1268,7 @@
                             this.shotStart={px:this.bpx, py:this.bpy};
                             this.shotTraceTick=120;
                             this.btpx=this._pendingBtpx; this.btpy=this._pendingBtpy;
-                            this.shotStep=0.005;
+                            this.shotStep=0.0025;
                             this.shotActive=true;
                         } else {
                             if(this._pending==="goal") this.goalDelayTick=20;
@@ -1313,7 +1326,7 @@
                         this.btpx=hAtt?1.04:-0.04;
                         this.btpy=keeperY<0.50?0.25:0.75;
                     }
-                    this.shotStep=0.006;
+                    this.shotStep=0.003;
                 } else if(this.attackVariant===6) {
                     // Free kick: wall hit or curling shot
                     const hitsWall = this._pendingResult==="nogoal" && Math.random()<0.38;
@@ -1330,7 +1343,7 @@
                         this.btpx=this._fkWallX+(hAtt?0.04:-0.04);
                         this.btpy=this._fkWallY+curveDir*(0.11+Math.random()*0.05);
                     }
-                    this.shotStep=0.0045;
+                    this.shotStep=0.0022;
                 } else {
                     this.btpx=this._pendingBtpx; this.btpy=this._pendingBtpy;
                 }
