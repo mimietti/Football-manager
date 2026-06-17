@@ -431,6 +431,7 @@
                     viz.setMatchMinute(eventMeta.minute);
                     // In the second half formations are x-flipped, so flip attack direction for viz
                     const inSecondHalf = eventMeta.minute > 45;
+                    if(inSecondHalf) viz.setSecondHalf();
                     const vizDir = b => inSecondHalf ? !b : b;
 
                     const isFinal  = l.startsWith("Final score:");
@@ -581,6 +582,7 @@
                 this.kickTick=0; this.kickDuration=18;
                 this._pendingBtpx=0; this._pendingBtpy=0;
                 this._pendingResult=null; this._pendingKeeper=null; this._attackVs="attack-human";
+                this._humanTeamAttacking=true;
                 this.freeKickCurving=false; this._fkWallX=0; this._fkWallY=0.5; this._fkWallHit=false;
                 this._penaltyKeeperY=0.50; this._penaltyBallY=0.50;
                 this._raf=null; this._loop=this._loop.bind(this);
@@ -629,6 +631,7 @@
                 this.attackVariant=0;
                 this.kickTick=0;
                 this._pendingResult=null; this._pendingKeeper=null;
+                this._humanTeamAttacking=true;
                 this._form("kickoff");
                 this._hideOverlay();
             }
@@ -649,6 +652,9 @@
             }
 
             _dribbleSetup(humanAttacking) {
+                // humanAttacking = direction (true=going right); humanTeamAttacking = which team actually attacks
+                const humanTeamAttacking = this._secondHalf ? !humanAttacking : humanAttacking;
+                this._humanTeamAttacking = humanTeamAttacking;
                 this._attackVs = humanAttacking ? "attack-human" : "attack-ai";
                 this.setState(this._attackVs);
                 this.goalTick=0; this.goalDelayTick=0; this.bannTick=0;
@@ -772,7 +778,7 @@
                     this.pl[dribIdx].tpx=this.pl[dribIdx].px; this.pl[dribIdx].tpy=this.bpy;
                 }
                 // Snap fmPl attacker to ball start (no lerp lag)
-                const fmSnapIdx=humanAttacking?this._humanAttIdx:this._aiAttIdx;
+                const fmSnapIdx=humanTeamAttacking?this._humanAttIdx:this._aiAttIdx;
                 if(fmSnapIdx>=0&&this.fmPl[fmSnapIdx]){
                     this.fmPl[fmSnapIdx].px=this.bpx; this.fmPl[fmSnapIdx].py=this.bpy;
                     this.fmPl[fmSnapIdx].tpx=this.bpx; this.fmPl[fmSnapIdx].tpy=this.bpy;
@@ -861,7 +867,7 @@
             }
 
             goal(humanScored) {
-                this.goalHuman=humanScored; this.bannType=null;
+                this.goalHuman=this._secondHalf?!humanScored:humanScored; this.bannType=null;
                 this._dribbleSetup(humanScored);
                 this._pendingBtpx=humanScored?0.994:0.006;
                 this._pendingBtpy=0.40+Math.random()*0.20;
@@ -869,7 +875,7 @@
             }
 
             noGoal(humanMissed) {
-                this.bannType="nogoal"; this.bannHuman=humanMissed;
+                this.bannType="nogoal"; this.bannHuman=this._secondHalf?!humanMissed:humanMissed;
                 this._dribbleSetup(humanMissed);
                 const r=Math.random(), gpx=humanMissed?1.02:-0.02;
                 if(r<0.33){ this._pendingBtpx=gpx; this._pendingBtpy=0.24+Math.random()*0.08; }
@@ -879,14 +885,15 @@
             }
 
             saved(humanAttacking) {
-                this.bannType="saved"; this.bannHuman=humanAttacking;
+                const humanTeamAtt=this._secondHalf?!humanAttacking:humanAttacking;
+                this.bannType="saved"; this.bannHuman=humanTeamAtt;
                 this._dribbleSetup(humanAttacking);
                 const kpx=humanAttacking?0.93+Math.random()*0.02:0.07-Math.random()*0.02;
                 const kpy=0.38+Math.random()*0.24;
                 const kFrom=humanAttacking?0.91:0.09;
                 this._pendingBtpx=kpx; this._pendingBtpy=kpy;
                 this._pendingResult="saved";
-                this._pendingKeeper={fromPx:kFrom, fromPy:0.50, px:kpx, py:kpy, human:!humanAttacking};
+                this._pendingKeeper={fromPx:kFrom, fromPy:0.50, px:kpx, py:kpy, human:!humanTeamAtt};
             }
 
             clearBanner() {
@@ -904,6 +911,12 @@
             }
             setState(name) { this._vs=name; this._form(name); if(name==="kickoff"||name==="full-time"){this.bpx=this.btpx;this.bpy=this.btpy;} }
             setHumanFormation(d, a) { this._humanD=Math.max(0,d|0); this._humanA=Math.max(1,a|0); }
+
+            setSecondHalf() {
+                if(this._secondHalf) return;
+                this._secondHalf=true;
+                this.fmPl.forEach(p=>{ p.fpx=1-p.fpx; p.px=1-p.px; p.tpx=1-p.tpx; });
+            }
 
             setFullFormation(hD, hM, hA) {
                 const fm=[];
@@ -981,32 +994,33 @@
                     for(const p of this.fmPl){p.tpx=p.fpx+(p.jx||0);p.tpy=p.fpy+(p.jy||0);}
                 }
                 if(this._vs==="attack-human"||this._vs==="attack-ai"){
-                    const humanAtt=this._vs==="attack-human";
+                    const humanAtt=this._vs==="attack-human"; // direction: true=going right
+                    const hTA=this._humanTeamAttacking;       // which team actually attacks
                     if(this.dribbleActive||this.passActive||this.wallReturnActive||this.kickTick>0){
-                        const fi=humanAtt?this._humanAttIdx:this._aiAttIdx;
+                        const fi=hTA?this._humanAttIdx:this._aiAttIdx;
                         const carrier=fi>=0?this.fmPl[fi]:null;
                         const plC=this.pl[this.dribblerIdx];
                         if(carrier&&plC){carrier.tpx=plC.tpx;carrier.tpy=plC.tpy;}
                         // Support player follows shooter on pass plays
                         if(this.passPlanned&&this.shooterIdx!==this.dribblerIdx){
-                            const si=humanAtt?this._humanSupportIdx:this._aiSupportIdx;
+                            const si=hTA?this._humanSupportIdx:this._aiSupportIdx;
                             const support=si>=0?this.fmPl[si]:null;
                             const plS=this.pl[this.shooterIdx];
                             if(support&&plS){support.tpx=plS.tpx;support.tpy=plS.tpy;}
                         }
                         // Wall pass: show the wall player at passTarget position
                         if(this.attackVariant===4&&(this.passActive||this.wallReturnActive)){
-                            const wi=humanAtt?this._humanSupportIdx:this._aiSupportIdx;
+                            const wi=hTA?this._humanSupportIdx:this._aiSupportIdx;
                             const wallFm=wi>=0?this.fmPl[wi]:null;
                             if(wallFm){wallFm.tpx=this.passTarget.px;wallFm.tpy=this.passTarget.py;}
                         }
                     } else if(this.shotActive&&this.shotStart){
                         // Shooter stays at kick origin while ball is in flight
-                        const fi=humanAtt?this._humanAttIdx:this._aiAttIdx;
+                        const fi=hTA?this._humanAttIdx:this._aiAttIdx;
                         const carrier=fi>=0?this.fmPl[fi]:null;
                         if(carrier){carrier.tpx=this.shotStart.px;carrier.tpy=this.shotStart.py;}
                         if(this.passPlanned&&this.shooterIdx!==this.dribblerIdx){
-                            const si=humanAtt?this._humanSupportIdx:this._aiSupportIdx;
+                            const si=hTA?this._humanSupportIdx:this._aiSupportIdx;
                             const support=si>=0?this.fmPl[si]:null;
                             if(support){support.tpx=this.shotStart.px;support.tpy=this.shotStart.py;}
                         }
@@ -1014,12 +1028,11 @@
                     // Defending fmPl converge toward ball path during dribble/pass
                     if((this.dribbleActive||this.passActive)&&this.attackVariant!==3&&this.attackVariant!==6&&this.attackVariant!==7){
                         const _cl=(v,a,b)=>Math.max(a,Math.min(b,v));
-                        // Intercept point: just ahead of ball, between attacker and defending goal
                         const intX=humanAtt
                             ?_cl(this.bpx+0.09,0.30,0.88)
                             :_cl(this.bpx-0.09,0.12,0.70);
                         const defFm=this.fmPl
-                            .filter(p=>!p.isGK&&p.human!==humanAtt)
+                            .filter(p=>!p.isGK&&p.human!==hTA)
                             .sort((a,b)=>Math.hypot(a.px-this.bpx,a.py-this.bpy)-Math.hypot(b.px-this.bpx,b.py-this.bpy));
                         defFm.slice(0,2).forEach((p,i)=>{
                             p.tpx=intX;
@@ -1045,23 +1058,24 @@
                 }
                 // Penalty: keeper dives during shot
                 if(this.attackVariant===7&&this.shotActive){
-                    const hAtt=this._vs==="attack-human";
+                    const hTA=this._humanTeamAttacking;
                     for(const p of this.fmPl){
-                        if(p.isGK&&p.human!==hAtt){
+                        if(p.isGK&&p.human!==hTA){
                             p.tpy=this._penaltyKeeperY;
                         }
                     }
                 }
                 // Free kick: wall + kicker positioning
                 if(this.attackVariant===6&&(this.kickTick>0||this.shotActive)){
-                    const hAtt=this._vs==="attack-human";
-                    const kickerIdx=hAtt?this._humanAttIdx:this._aiAttIdx;
+                    const hAtt=this._vs==="attack-human"; // direction
+                    const hTA=this._humanTeamAttacking;   // actual team
+                    const kickerIdx=hTA?this._humanAttIdx:this._aiAttIdx;
                     // Kicker stays at ball position
                     if(kickerIdx>=0&&this.fmPl[kickerIdx]){
                         this.fmPl[kickerIdx].tpx=this.bpx; this.fmPl[kickerIdx].tpy=this.bpy;
                     }
                     // Defending team: 3-4 players form a wall
-                    const wallDefenders=this.fmPl.filter(p=>!p.isGK&&p.human!==hAtt).slice(0,4);
+                    const wallDefenders=this.fmPl.filter(p=>!p.isGK&&p.human!==hTA).slice(0,4);
                     wallDefenders.forEach((p,i)=>{
                         p.tpx=this._fkWallX;
                         p.tpy=this._fkWallY+(i-1.5)*0.055;
@@ -1070,7 +1084,7 @@
                     let ai=0;
                     for(let pi=0;pi<this.fmPl.length;pi++){
                         const p=this.fmPl[pi];
-                        if(!p.isGK&&p.human===hAtt&&pi!==kickerIdx){
+                        if(!p.isGK&&p.human===hTA&&pi!==kickerIdx){
                             const rebX=hAtt?0.84+ai*0.03:0.16-ai*0.03;
                             p.tpx=Math.max(0.06,Math.min(0.94,rebX));
                             p.tpy=0.38+ai*0.08;
@@ -1080,15 +1094,16 @@
                 }
                 // Corner kick: cluster outfield players in penalty area
                 if(this.attackVariant===3&&(this.kickTick>0||this.shotActive)){
-                    const hAtt=this._vs==="attack-human";
+                    const hAtt=this._vs==="attack-human"; // direction
+                    const hTA=this._humanTeamAttacking;   // actual team
                     const boxX=hAtt?0.87:0.13;
                     const boxYs=[0.40,0.47,0.54,0.60,0.44,0.51,0.57];
-                    const kickerIdx=hAtt?this._humanAttIdx:this._aiAttIdx;
+                    const kickerIdx=hTA?this._humanAttIdx:this._aiAttIdx;
                     // Attacking team: defenders stay back as counter-cover; mids+fwds fill box
                     let boxI=0, covI=0;
                     for(let pi=0;pi<this.fmPl.length;pi++){
                         const p=this.fmPl[pi];
-                        if(!p.isGK&&p.human===hAtt&&pi!==kickerIdx){
+                        if(!p.isGK&&p.human===hTA&&pi!==kickerIdx){
                             if(p.role==='D'){
                                 // Stay in midfield to cover break
                                 p.tpx=hAtt?0.44+covI*0.06:0.56-covI*0.06;
@@ -1104,7 +1119,7 @@
                     // Defending team: pack the box
                     let di=0;
                     for(const p of this.fmPl){
-                        if(!p.isGK&&p.human!==hAtt){
+                        if(!p.isGK&&p.human!==hTA){
                             p.tpx=(hAtt?0.91:0.09)+(di%3)*0.025*(hAtt?1:-1);
                             p.tpy=0.35+(di%7)*0.05;
                             di++;
