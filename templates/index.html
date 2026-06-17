@@ -801,7 +801,7 @@
                         this.pl[this.shooterIdx].tpx=Math.max(.72,Math.min(.96,runX));
                         this.pl[this.shooterIdx].tpy=this.passTarget.py+j(.08);
                     } else {
-                        this.pl[this.shooterIdx].tpx=this.passTarget.px+fwd;
+                        this.pl[this.shooterIdx].tpx=this.passTarget.px-fwd;
                         this.pl[this.shooterIdx].tpy=this.passTarget.py;
                     }
                 }
@@ -849,7 +849,7 @@
                     this.pl[supportIdx].tpy=supportY;
                 }
                 if(this.pl[this.shooterIdx] && this.shooterIdx!==this.dribblerIdx) {
-                    this.pl[this.shooterIdx].tpx=(this.passTarget?.px ?? this.bpx)+fwd;
+                    this.pl[this.shooterIdx].tpx=(this.passTarget?.px ?? this.bpx)-fwd;
                     this.pl[this.shooterIdx].tpy=this.passTarget?.py ?? this.bpy;
                 }
                 const defenders=humanAttacking ? [2,3,4] : [0,1,4];
@@ -1158,7 +1158,7 @@
                             this.pl[this.dribblerIdx].tpy=this.wallReturnTarget.py;
                         }
                     } else if(this.pl[this.shooterIdx]){
-                        this.pl[this.shooterIdx].tpx=this.passTarget.px+fwd;
+                        this.pl[this.shooterIdx].tpx=this.passTarget.px-fwd;
                         this.pl[this.shooterIdx].tpy=this.passTarget.py;
                     }
                     const dx=this.passTarget.px-this.bpx, dy=this.passTarget.py-this.bpy;
