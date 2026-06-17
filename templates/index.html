@@ -573,12 +573,12 @@
                 this.fmPl=[];
                 this.bpx=.50; this.bpy=.50; this.btpx=.50; this.btpy=.50;
                 this.bannType=null; this.bannTick=0; this.bannHuman=true;
-                this.shotActive=false; this.shotStep=0.002; this.cornerCross=false; this._pending=null;
+                this.shotActive=false; this.shotStep=0.0015; this.cornerCross=false; this._pending=null;
                 this.shotStart=null; this.shotTraceTick=0;
                 this.goalDelayTick=0;
                 this.keeperSave=null; this.keeperTick=0;
-                this.dribbleActive=false; this.dribbleTarget=null; this.dribbleStep=0.0009;
-                this.passActive=false; this.passTarget=null; this.passStep=0.0015;
+                this.dribbleActive=false; this.dribbleTarget=null; this.dribbleStep=0.0007;
+                this.passActive=false; this.passTarget=null; this.passStep=0.0011;
                 this.wallReturnActive=false; this.wallReturnTarget=null;
                 this.dribblerIdx=0; this.shooterIdx=0; this.passPlanned=false;
                 this.kickTick=0; this.kickDuration=18;
@@ -663,7 +663,7 @@
                 this.setState(this._attackVs);
                 this._animComplete=false; this._animResolve=null;
                 this.goalTick=0; this.goalDelayTick=0; this.bannTick=0;
-                this.shotActive=false; this.shotStep=0.002; this.cornerCross=false; this._pending=null;
+                this.shotActive=false; this.shotStep=0.0015; this.cornerCross=false; this._pending=null;
                 this.shotStart=null; this.shotTraceTick=0;
                 this.keeperSave=null; this.keeperTick=0;
                 this.kickTick=0;
@@ -707,20 +707,29 @@
                         else{this.bpx=0.30-Math.random()*0.08;this.bpy=Math.random()<0.5?0.04+Math.random()*0.10:0.86+Math.random()*0.10;}
                     }
                     if(isWallPass){
-                        // Wall pass (seinäsyöttö): give-and-go — same player passes then runs to receive
+                        // Wall pass (seinäsyöttö): give-and-go
+                        // 1) Dribbler approaches defender, 2) passes SIDEWAYS to wall player,
+                        // 3) sprints past defender, 4) receives ball back ahead in space
                         this.passPlanned=true;
                         this.shooterIdx=this.dribblerIdx;
+                        // Start further back so dribble phase is visible
+                        this.bpx=humanAttacking?0.50+Math.random()*0.06:0.50-Math.random()*0.06;
+                        this.bpy=0.38+Math.random()*0.24;
                         const wallSide=(Math.random()<0.5?1:-1);
-                        const wallX=humanAttacking?0.72+Math.random()*0.08:0.28-Math.random()*0.08;
-                        const wallY=Math.max(0.33,Math.min(0.67,this.bpy+wallSide*(0.09+Math.random()*0.07)));
-                        this.passTarget={px:wallX,py:wallY};
-                        const retX=humanAttacking?wallX+0.09+Math.random()*0.07:wallX-0.09-Math.random()*0.07;
-                        const retY=Math.max(0.35,Math.min(0.65,this.bpy+wallSide*0.03+(Math.random()-.5)*0.05));
-                        this.wallReturnTarget={px:retX,py:retY};
+                        // Dribble target: approach to ~midfield/attack boundary
+                        const approachX=humanAttacking?0.64+Math.random()*0.04:0.36-Math.random()*0.04;
                         this.dribbleTarget={
-                            px:humanAttacking?wallX-0.07+Math.random()*0.04:wallX+0.07-Math.random()*0.04,
-                            py:Math.max(0.35,Math.min(0.65,this.bpy*0.7+wallY*0.3))
+                            px:approachX,
+                            py:Math.max(0.36,Math.min(0.64,this.bpy+(Math.random()-.5)*0.05))
                         };
+                        // Wall player: same depth, clearly to the side (sideways pass)
+                        const wallX=approachX+(humanAttacking?0.01+Math.random()*0.02:-(0.01+Math.random()*0.02));
+                        const wallY=Math.max(0.28,Math.min(0.72,this.dribbleTarget.py+wallSide*(0.14+Math.random()*0.07)));
+                        this.passTarget={px:wallX,py:wallY};
+                        // Return target: well ahead of defender (dribbler has sprinted past)
+                        const retX=humanAttacking?wallX+0.16+Math.random()*0.06:wallX-0.16-Math.random()*0.06;
+                        const retY=Math.max(0.36,Math.min(0.64,this.dribbleTarget.py+wallSide*0.03+(Math.random()-.5)*0.04));
+                        this.wallReturnTarget={px:retX,py:retY};
                         } else if(isFreeKick){
                         // Free kick: static ball, wall, curling shot
                         // Randomize position: anywhere from ~22m out to edge of box, varied angle
@@ -741,7 +750,9 @@
                         this.bpx=humanAttacking?0.878:0.122;
                         this.bpy=0.50;
                         this.dribbleActive=false; this.passPlanned=false;
-                        this.kickTick=65; // run-up frames
+                        this.kickTick=80;
+                        this._penaltyKickDuration=80;
+                        this._penaltyRunupStartX=humanAttacking?this.bpx-0.09:this.bpx+0.09;
                         this.dribbleTarget={px:this.bpx,py:this.bpy};
                         this._penaltyKeeperY=Math.random()<0.5?0.30:0.70;
                     } else if(isWingCross){
@@ -776,11 +787,12 @@
                     }
                 }
 
-                // Snap dribbler player to ball start so they move together
+                // Snap dribbler player to start position (run-up start for penalty, ball for others)
                 const dribIdx=this.dribblerIdx;
                 if(this.pl[dribIdx]){
-                    this.pl[dribIdx].px=this.bpx; this.pl[dribIdx].py=this.bpy;
-                    this.pl[dribIdx].tpx=this.pl[dribIdx].px; this.pl[dribIdx].tpy=this.bpy;
+                    const snapX=isPenalty?this._penaltyRunupStartX:this.bpx;
+                    this.pl[dribIdx].px=snapX; this.pl[dribIdx].py=this.bpy;
+                    this.pl[dribIdx].tpx=snapX; this.pl[dribIdx].tpy=this.bpy;
                 }
                 // Snap fmPl attacker to ball start (no lerp lag)
                 const fmSnapIdx=humanTeamAttacking?this._humanAttIdx:this._aiAttIdx;
@@ -1004,11 +1016,11 @@
             _loop(t) {
                 this._raf=requestAnimationFrame(this._loop);
                 this.phase=(t*0.003)%(Math.PI*2);
-                const sp=0.07;
+                const sp=0.05;
                 for(const p of this.pl){p.px+=(p.tpx-p.px)*sp;p.py+=(p.tpy-p.py)*sp;}
                 // fmPl sync: freeze in place during result banner so players don't drift
                 // back to formation while the save/miss/goal result is still showing
-                const _frozen = this.bannTick > 0 || this.goalDelayTick > 0;
+                const _frozen = this.bannTick > 0 || this.goalDelayTick > 0 || this.goalTick > 0;
                 if(_frozen) {
                     for(const p of this.fmPl){p.tpx=p.px;p.tpy=p.py;}
                 } else {
@@ -1066,24 +1078,31 @@
                         });
                     }
                 }
-                // Goal celebration: cluster human players near goal
-                if(this.goalTick>0&&this.goalHuman){
-                    let ci=0;
-                    for(const p of this.fmPl){
-                        if(p.human&&!p.isGK){
-                            p.tpx=Math.max(0.01,this.btpx-0.08)+(ci%3-1)*0.025;
-                            p.tpy=0.38+Math.floor(ci/3)*0.12;
-                            ci++;
-                        }
-                    }
-                }
-                // Penalty: keeper dives during shot
-                if(this.attackVariant===7&&this.shotActive){
+                // Penalty: position all players + keeper dives on shot
+                if(this.attackVariant===7&&(this.kickTick>0||this.shotActive)){
+                    const hAtt=this._vs==="attack-human";
                     const hTA=this._humanTeamAttacking;
+                    const kickerIdx=hTA?this._humanAttIdx:this._aiAttIdx;
+                    // Run-up: kicker moves from behind ball to ball over kickTick
+                    if(kickerIdx>=0&&this.fmPl[kickerIdx]){
+                        const prog=this.kickTick>0?1-(this.kickTick/this._penaltyKickDuration):1;
+                        const rx=this._penaltyRunupStartX+(this.bpx-this._penaltyRunupStartX)*prog;
+                        this.fmPl[kickerIdx].tpx=rx; this.fmPl[kickerIdx].tpy=this.bpy;
+                    }
+                    // Keeper dives toward corner during shot
                     for(const p of this.fmPl){
-                        if(p.isGK&&p.human!==hTA){
-                            p.tpy=this._penaltyKeeperY;
-                        }
+                        if(p.isGK&&p.human!==hTA) p.tpy=this.shotActive?this._penaltyKeeperY:0.50;
+                    }
+                    // All other outfield players wait in a line just outside the penalty area
+                    const waitX=hAtt?0.76:0.24;
+                    let wi=0;
+                    for(let pi=0;pi<this.fmPl.length;pi++){
+                        const p=this.fmPl[pi];
+                        if(p.isGK||pi===kickerIdx) continue;
+                        const col=Math.floor(wi/5);
+                        p.tpx=hAtt?waitX-col*0.045:waitX+col*0.045;
+                        p.tpy=0.28+(wi%5)*0.115;
+                        wi++;
                     }
                 }
                 // Free kick: wall + kicker positioning
@@ -1115,41 +1134,51 @@
                 }
                 // Corner kick: cluster outfield players in penalty area
                 if(this.attackVariant===3&&(this.kickTick>0||this.shotActive)){
-                    const hAtt=this._vs==="attack-human"; // direction
-                    const hTA=this._humanTeamAttacking;   // actual team
+                    const hAtt=this._vs==="attack-human";
+                    const hTA=this._humanTeamAttacking;
                     const sign=hAtt?1:-1;
-                    const boxNear=hAtt?0.89:0.11; // near post x
+                    const boxFar=hAtt?0.838:0.162;  // edge of penalty area
+                    const boxMid=hAtt?0.880:0.120;  // middle of box
                     const kickerIdx=hTA?this._humanAttIdx:this._aiAttIdx;
-                    // Attacking mids+fwds: spread organically across the box using per-player jitter
-                    const attBoxYs=[0.38,0.44,0.50,0.56,0.62,0.41,0.47,0.53,0.59];
-                    let boxI=0, covI=0;
-                    for(let pi=0;pi<this.fmPl.length;pi++){
-                        const p=this.fmPl[pi];
-                        if(!p.isGK&&p.human===hTA&&pi!==kickerIdx){
-                            if(p.role==='D'){
-                                // Defenders hold midfield against counter
-                                p.tpx=hAtt?0.46+covI*0.07:0.54-covI*0.07;
-                                p.tpy=0.30+covI*0.20+(p.jy||0)*0.5;
-                                covI++;
-                            } else {
-                                // Spread irregularly using jitter to break grid look
-                                const bx=boxNear-(boxI*0.055+0.02)*sign;
-                                p.tpx=Math.max(0.06,Math.min(0.94,bx+(p.jx||0)*0.6));
-                                p.tpy=Math.max(0.30,Math.min(0.70,attBoxYs[boxI%attBoxYs.length]+(p.jy||0)*0.5));
-                                boxI++;
-                            }
-                        }
+                    // Spread Ys across full box height for organic look
+                    const boxYs=[0.36,0.42,0.48,0.54,0.60,0.39,0.45,0.51,0.57,0.63];
+                    // Attacking team: kicker at flag, 2 defenders hold midfield, rest all go in box
+                    let attBoxI=0, covI=0;
+                    const attOutfield=this.fmPl.filter((p,pi)=>!p.isGK&&p.human===hTA&&pi!==kickerIdx);
+                    const holdBack=2; // max defenders held at midfield
+                    const attDefenders=attOutfield.filter(p=>p.role==='D');
+                    const attOthers=attOutfield.filter(p=>p.role!=='D');
+                    // First send non-defenders into box, then enough defenders to hit ≥5 in box
+                    const attInBox=[...attOthers];
+                    let held=0;
+                    for(const p of attDefenders){
+                        if(attInBox.length>=7||held>=holdBack) attInBox.push(p);
+                        else { held++; }
                     }
-                    // Defending team: face the cross in a less rigid spread
-                    let di=0;
-                    for(const p of this.fmPl){
-                        if(!p.isGK&&p.human!==hTA){
-                            const dx=boxNear-(di*0.04+0.01)*sign;
-                            p.tpx=Math.max(0.06,Math.min(0.94,dx+(p.jx||0)*0.5));
-                            p.tpy=Math.max(0.28,Math.min(0.72,0.36+(di%8)*0.048+(p.jy||0)*0.4));
-                            di++;
-                        }
-                    }
+                    const attHeld=attDefenders.slice(0,held);
+                    attHeld.forEach((p,i)=>{
+                        p.tpx=hAtt?0.44+i*0.08:0.56-i*0.08;
+                        p.tpy=0.32+i*0.18+(p.jy||0)*0.4;
+                    });
+                    attInBox.forEach(p=>{
+                        const bx=boxMid-(attBoxI*0.035)*sign;
+                        p.tpx=Math.max(0.06,Math.min(0.94,bx+(p.jx||0)*0.5));
+                        p.tpy=Math.max(0.30,Math.min(0.70,boxYs[attBoxI%boxYs.length]+(p.jy||0)*0.45));
+                        attBoxI++;
+                    });
+                    // Defending team: 2 stay outside box, rest defend inside
+                    const defOutfield=this.fmPl.filter(p=>!p.isGK&&p.human!==hTA);
+                    const defOutside=defOutfield.slice(0,2);
+                    const defInBox=defOutfield.slice(2);
+                    defOutside.forEach((p,i)=>{
+                        p.tpx=hAtt?boxFar-0.06-i*0.05:boxFar+0.06+i*0.05;
+                        p.tpy=0.35+i*0.30+(p.jy||0)*0.4;
+                    });
+                    defInBox.forEach((p,i)=>{
+                        const dx=boxMid-(i*0.038+0.01)*sign;
+                        p.tpx=Math.max(0.06,Math.min(0.94,dx+(p.jx||0)*0.45));
+                        p.tpy=Math.max(0.28,Math.min(0.72,boxYs[(i+3)%boxYs.length]+(p.jy||0)*0.40));
+                    });
                 }
                 for(const p of this.fmPl){p.px+=(p.tpx-p.px)*sp;p.py+=(p.tpy-p.py)*sp;}
                 if(this.dribbleActive) {
@@ -1206,8 +1235,6 @@
                     if(this.pl[this.dribblerIdx]){
                         this.pl[this.dribblerIdx].tpx=this.wallReturnTarget.px;
                         this.pl[this.dribblerIdx].tpy=this.wallReturnTarget.py;
-                        this.pl[this.dribblerIdx].px=this.wallReturnTarget.px;
-                        this.pl[this.dribblerIdx].py=this.wallReturnTarget.py;
                     }
                     const dx=this.wallReturnTarget.px-this.bpx, dy=this.wallReturnTarget.py-this.bpy;
                     const dist=Math.sqrt(dx*dx+dy*dy);
@@ -1223,9 +1250,16 @@
                 } else if(this.kickTick>0) {
                     if(this.attackVariant!==6) this._moveOffBall();
                     const dribIdx=this.attackVariant===6?this.dribblerIdx:this.shooterIdx;
-                    const dribOscil=Math.max(0,Math.sin(this.phase*8))*0.007;
-                    const fwd=this._vs==="attack-ai"?-dribOscil:dribOscil;
-                    if(this.pl[dribIdx]){this.pl[dribIdx].tpx=this.bpx-fwd;this.pl[dribIdx].tpy=this.bpy;this.pl[dribIdx].px=this.bpx-fwd;this.pl[dribIdx].py=this.bpy;}
+                    if(this.attackVariant===7){
+                        // Penalty run-up: ghost player walks toward ball
+                        const prog=1-(this.kickTick/this._penaltyKickDuration);
+                        const rx=this._penaltyRunupStartX+(this.bpx-this._penaltyRunupStartX)*prog;
+                        if(this.pl[dribIdx]){this.pl[dribIdx].tpx=rx;this.pl[dribIdx].tpy=this.bpy;}
+                    } else {
+                        const dribOscil=Math.max(0,Math.sin(this.phase*8))*0.007;
+                        const fwd=this._vs==="attack-ai"?-dribOscil:dribOscil;
+                        if(this.pl[dribIdx]){this.pl[dribIdx].tpx=this.bpx-fwd;this.pl[dribIdx].tpy=this.bpy;this.pl[dribIdx].px=this.bpx-fwd;this.pl[dribIdx].py=this.bpy;}
+                    }
                     this.kickTick--;
                     if(this.kickTick===0) this._launchShot();
                 } else if(this.shotActive) {
@@ -1241,7 +1275,7 @@
                             this.shotStart={px:this.bpx, py:this.bpy};
                             this.shotTraceTick=100;
                             this.btpx=this._pendingBtpx; this.btpy=this._pendingBtpy;
-                            this.shotStep=0.0035;
+                            this.shotStep=0.0018;
                             this.shotActive=true;
                         } else if(this._fkWallHit) {
                             // Free kick hit the wall — ball deflects, result is miss
@@ -1254,7 +1288,7 @@
                             this.shotStart={px:this.bpx, py:this.bpy};
                             this.shotTraceTick=120;
                             this.btpx=this._pendingBtpx; this.btpy=this._pendingBtpy;
-                            this.shotStep=0.0025;
+                            this.shotStep=0.0018;
                             this.shotActive=true;
                         } else {
                             if(this._pending==="goal") this.goalDelayTick=20;
@@ -1312,7 +1346,7 @@
                         this.btpx=hAtt?1.04:-0.04;
                         this.btpy=keeperY<0.50?0.25:0.75;
                     }
-                    this.shotStep=0.003;
+                    this.shotStep=0.0016;
                 } else if(this.attackVariant===6) {
                     // Free kick: wall hit or curling shot
                     const hitsWall = this._pendingResult==="nogoal" && Math.random()<0.38;
@@ -1329,7 +1363,7 @@
                         this.btpx=this._fkWallX+(hAtt?0.04:-0.04);
                         this.btpy=this._fkWallY+curveDir*(0.11+Math.random()*0.05);
                     }
-                    this.shotStep=0.0022;
+                    this.shotStep=0.0016;
                 } else {
                     this.btpx=this._pendingBtpx; this.btpy=this._pendingBtpy;
                 }
