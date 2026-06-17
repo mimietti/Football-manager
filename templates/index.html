@@ -525,7 +525,7 @@
                     ul.appendChild(li);
                     li.scrollIntoView({ behavior: "smooth", block: "nearest" });
 
-                    await delay(isGoal ? 5000 : isMiss || isSaved || isIntercept || needsLongDelay ? 4500 : isFinal ? 900 : 900);
+                    await delay(isGoal ? 5800 : isMiss || isSaved || isIntercept || needsLongDelay ? 5500 : isFinal ? 900 : 900);
                 }
 
                 if (financeLines.length) {
@@ -919,8 +919,14 @@
                 this.phase=(t*0.003)%(Math.PI*2);
                 const sp=0.07;
                 for(const p of this.pl){p.px+=(p.tpx-p.px)*sp;p.py+=(p.tpy-p.py)*sp;}
-                // fmPl sync: reset to formation, then apply attack/celebration overrides
-                for(const p of this.fmPl){p.tpx=p.fpx+(p.jx||0);p.tpy=p.fpy+(p.jy||0);}
+                // fmPl sync: freeze in place during result banner so players don't drift
+                // back to formation while the save/miss/goal result is still showing
+                const _frozen = this.bannTick > 0 || this.goalDelayTick > 0;
+                if(_frozen) {
+                    for(const p of this.fmPl){p.tpx=p.px;p.tpy=p.py;}
+                } else {
+                    for(const p of this.fmPl){p.tpx=p.fpx+(p.jx||0);p.tpy=p.fpy+(p.jy||0);}
+                }
                 if(this._vs==="attack-human"||this._vs==="attack-ai"){
                     const humanAtt=this._vs==="attack-human";
                     if(this.dribbleActive||this.passActive||this.wallReturnActive||this.kickTick>0){
