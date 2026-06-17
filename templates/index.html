@@ -86,8 +86,9 @@
 
         <!-- Match visualisation -->
         <section id="matchVisual" class="match-visual" style="display:none">
-            <div class="scoreboard-still">
+            <div class="scoreboard-still" style="position:relative">
                 <canvas id="pitchCanvas" class="pitch-canvas"></canvas>
+                <button id="debugNumBtn" onclick="if(matchViz)matchViz._debugNums=!matchViz._debugNums;this.style.opacity=matchViz&&matchViz._debugNums?'1':'0.4'" style="position:absolute;top:4px;right:4px;font-size:10px;padding:2px 6px;background:#222;color:#aaa;border:1px solid #555;border-radius:3px;cursor:pointer;opacity:0.4;z-index:10">#</button>
                 <div id="visualFixture" class="visual-fixture"></div>
             </div>
             <div id="visualScore" class="visual-score"></div>
@@ -1696,6 +1697,12 @@
                 } else {
                     g.font="bold 16px monospace"; g.fillStyle="#999999";
                     g.fillText(`${min}'`,cx,rowCy);
+                }
+                if(this._debugNums && this.dribbleActive){
+                    const vNames=["dribble","dribble","dribble","corner","wall-pass","cross","free-kick","penalty"];
+                    const lbl=`v${this.attackVariant} ${vNames[this.attackVariant]||""}`;
+                    g.font="10px monospace"; g.fillStyle="#ff0"; g.textAlign="right";
+                    g.fillText(lbl, W-6, rowCy);
                 }
                 g.restore();
             }
