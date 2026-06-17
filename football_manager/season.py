@@ -580,11 +580,13 @@ class SeasonState:
             "human": {
                 "energy": a[0], "morale": a[1],
                 "defence": a[2], "midfield": a[3], "attack": a[4],
+                "goalkeeper": a[5] if len(a) > 5 else 1,
                 "lineup_size": len(human.lineup_ids),
             },
             "ai": {
                 "energy": ai_val, "morale": ai_val,
                 "defence": ai_val, "midfield": ai_val, "attack": ai_val,
+                "goalkeeper": ai_val,
             },
         }
 

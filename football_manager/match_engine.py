@@ -120,6 +120,7 @@ def _retro_player_attrs(team: Team) -> list[int]:
         max(1, sum(p.skill for p in active if p.position == "D")),
         max(1, sum(p.skill for p in active if p.position == "M")),
         max(1, sum(p.skill for p in active if p.position == "A")),
+        max(1, sum(p.skill_g or p.skill for p in active if p.position == "G")),
     ]
 
 

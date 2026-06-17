@@ -313,11 +313,12 @@
                 ? '<button class="pm-rename-btn" type="button" data-pm-rename="1">Rename</button>'
                 : "";
             const rows = [
-                ["Energy",   pm.human.energy,   pm.ai.energy],
-                ["Morale",   pm.human.morale,   pm.ai.morale],
-                ["Defence",  pm.human.defence,  pm.ai.defence],
-                ["Midfield", pm.human.midfield, pm.ai.midfield],
-                ["Attack",   pm.human.attack,   pm.ai.attack],
+                ["Energy",     pm.human.energy,      pm.ai.energy],
+                ["Morale",     pm.human.morale,      pm.ai.morale],
+                ["Goalkeeper", pm.human.goalkeeper,  pm.ai.goalkeeper],
+                ["Defence",    pm.human.defence,     pm.ai.defence],
+                ["Midfield",   pm.human.midfield,    pm.ai.midfield],
+                ["Attack",     pm.human.attack,      pm.ai.attack],
             ];
             document.getElementById("preMatchContent").innerHTML = `
                 <table class="prematch-table">
@@ -1917,7 +1918,11 @@
                 let statusAttrs = "";
                 if (pendingLineupIn) {
                     if (player.id === pendingLineupIn.id) { statusLabel = "Selected"; statusClass = "status-swap"; statusContent = esc(statusLabel); }
-                    else if (player.active) { statusLabel = "Swap"; statusClass = "status-swap"; statusContent = esc(statusLabel); }
+                    else if (player.active) {
+                        // GK can only swap with GK; outfield can only swap with outfield
+                        const sameGroup = (player.position === "G") === (pendingLineupIn.position === "G");
+                        if (sameGroup) { statusLabel = "Swap"; statusClass = "status-swap"; statusContent = esc(statusLabel); }
+                    }
                 } else if (squadAction === "sell") {
                     statusLabel = "Sell";
                     statusClass = player.injured || state?.transfer_sold_this_window ? "status-disabled" : "status-action";
@@ -2172,11 +2177,14 @@
                 }
                 if (squadAction === "role") return;
                 if (pendingLineupIn && player.active) {
-                    emitGame("swap_lineup", {
-                        team: playerSelect.dataset.team,
-                        in_player_id: pendingLineupIn.id,
-                        out_player_id: player.id,
-                    });
+                    const sameGroup = (player.position === "G") === (pendingLineupIn.position === "G");
+                    if (sameGroup) {
+                        emitGame("swap_lineup", {
+                            team: playerSelect.dataset.team,
+                            in_player_id: pendingLineupIn.id,
+                            out_player_id: player.id,
+                        });
+                    }
                     pendingLineupIn = null;
                     return;
                 }
@@ -2187,7 +2195,7 @@
                 }
                 if (!player.active && human?.lineup_size >= 11) {
                     if (player.injured) return;
-                    pendingLineupIn = { id: player.id, name: player.name };
+                    pendingLineupIn = { id: player.id, name: player.name, position: player.position };
                     render();
                     return;
                 }
@@ -2205,11 +2213,14 @@
                 const player = (human?.squad || []).find(p => p.id === lineup.dataset.lineup);
                 if (!player) return;
                 if (pendingLineupIn && player.active) {
-                    emitGame("swap_lineup", {
-                        team: lineup.dataset.team,
-                        in_player_id: pendingLineupIn.id,
-                        out_player_id: player.id,
-                    });
+                    const sameGroup = (player.position === "G") === (pendingLineupIn.position === "G");
+                    if (sameGroup) {
+                        emitGame("swap_lineup", {
+                            team: lineup.dataset.team,
+                            in_player_id: pendingLineupIn.id,
+                            out_player_id: player.id,
+                        });
+                    }
                     pendingLineupIn = null;
                     return;
                 }
@@ -2219,7 +2230,7 @@
                     return;
                 }
                 if (!player.active && human?.lineup_size >= 11) {
-                    pendingLineupIn = { id: player.id, name: player.name };
+                    pendingLineupIn = { id: player.id, name: player.name, position: player.position };
                     render();
                     return;
                 }
