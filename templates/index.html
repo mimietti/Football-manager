@@ -526,7 +526,14 @@
                     ul.appendChild(li);
                     li.scrollIntoView({ behavior: "smooth", block: "nearest" });
 
-                    await delay(isGoal ? 5800 : isMiss || isSaved || isIntercept || needsLongDelay ? 5500 : isFinal ? 900 : 900);
+                    if(!isFinal) {
+                        if(isGoal || isMiss || isSaved || isIntercept || needsLongDelay) {
+                            await viz.waitForAnim();
+                            await delay(350);
+                        } else {
+                            await delay(900);
+                        }
+                    }
                 }
 
                 if (financeLines.length) {
@@ -583,6 +590,7 @@
                 this._pendingBtpx=0; this._pendingBtpy=0;
                 this._pendingResult=null; this._pendingKeeper=null; this._attackVs="attack-human";
                 this._humanTeamAttacking=true;
+                this._animComplete=true; this._animResolve=null;
                 this.freeKickCurving=false; this._fkWallX=0; this._fkWallY=0.5; this._fkWallHit=false;
                 this._penaltyKeeperY=0.50; this._penaltyBallY=0.50;
                 this._raf=null; this._loop=this._loop.bind(this);
@@ -632,6 +640,7 @@
                 this.kickTick=0;
                 this._pendingResult=null; this._pendingKeeper=null;
                 this._humanTeamAttacking=true;
+                this._animComplete=true; this._animResolve=null;
                 this._form("kickoff");
                 this._hideOverlay();
             }
@@ -657,6 +666,7 @@
                 this._humanTeamAttacking = humanTeamAttacking;
                 this._attackVs = humanAttacking ? "attack-human" : "attack-ai";
                 this.setState(this._attackVs);
+                this._animComplete=false; this._animResolve=null;
                 this.goalTick=0; this.goalDelayTick=0; this.bannTick=0;
                 this.shotActive=false; this.shotStep=0.004; this.cornerCross=false; this._pending=null;
                 this.shotStart=null; this.shotTraceTick=0;
@@ -907,8 +917,24 @@
                 this.attackVariant=0;
                 this.kickTick=0;
                 this._pendingResult=null; this._pendingKeeper=null;
+                this._signalAnimDone();
                 this._hideOverlay();
             }
+
+            _signalAnimDone() {
+                this._animComplete=true;
+                if(this._animResolve){ this._animResolve(); this._animResolve=null; }
+            }
+
+            // Returns a promise that resolves when the current attack animation fully displays its result.
+            waitForAnim(maxMs=18000) {
+                if(this._animComplete) return Promise.resolve();
+                return new Promise(r=>{
+                    this._animResolve=r;
+                    setTimeout(()=>{ if(this._animResolve===r){ this._animResolve=null; r(); } }, maxMs);
+                });
+            }
+
             setState(name) { this._vs=name; this._form(name); if(name==="kickoff"||name==="full-time"){this.bpx=this.btpx;this.bpy=this.btpy;} }
             setHumanFormation(d, a) { this._humanD=Math.max(0,d|0); this._humanA=Math.max(1,a|0); }
 
@@ -1221,7 +1247,7 @@
                         } else if(this._fkWallHit) {
                             // Free kick hit the wall — ball deflects, result is miss
                             this._fkWallHit=false;
-                            this.bannTick=270+Math.floor(Math.random()*30);
+                            this.bannTick=100+Math.floor(Math.random()*20);
                             this._pending=null;
                         } else if(this.freeKickCurving) {
                             // Free kick cleared the wall — now flies toward goal/keeper
@@ -1232,10 +1258,10 @@
                             this.shotStep=0.005;
                             this.shotActive=true;
                         } else {
-                            if(this._pending==="goal") this.goalDelayTick=75;
-                            else if(this._pending==="nogoal") this.bannTick=270+Math.floor(Math.random()*30);
+                            if(this._pending==="goal") this.goalDelayTick=20;
+                            else if(this._pending==="nogoal") this.bannTick=100+Math.floor(Math.random()*20);
                             else if(this._pending==="saved") {
-                                this.bannTick=260+Math.floor(Math.random()*30);
+                                this.bannTick=110+Math.floor(Math.random()*20);
                                 this.keeperTick=this.bannTick;
                             }
                             this._pending=null;
@@ -1249,10 +1275,10 @@
                 }
                 if(this.goalDelayTick>0) {
                     this.goalDelayTick--;
-                    if(this.goalDelayTick===0) this.goalTick=300+Math.floor(Math.random()*30);
+                    if(this.goalDelayTick===0) this.goalTick=150+Math.floor(Math.random()*20);
                 }
-                if(this.goalTick>0)this.goalTick--;
-                if(this.bannTick>0)this.bannTick--;
+                if(this.goalTick>0){ this.goalTick--; if(this.goalTick===0) this._signalAnimDone(); }
+                if(this.bannTick>0){ this.bannTick--; if(this.bannTick===0) this._signalAnimDone(); }
                 if(this.shotTraceTick>0)this.shotTraceTick--;
                 else if(!this.shotActive) this.shotStart=null;
                 if(this.keeperTick>0)this.keeperTick--;
